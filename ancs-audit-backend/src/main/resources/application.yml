@@ -1,0 +1,126 @@
+# ============================================================
+# ANCS Audit Backend — Configuration de base
+# Les propriétés sensibles sont surchargées par les profils
+# dev (application-dev.yml) et prod (application-prod.yml)
+# ============================================================
+
+spring:
+  application:
+    name: ancs-audit-backend
+
+  # --- Jackson JSON ---
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+  # --- JPA / Hibernate ---
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  # --- Flyway ---
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    encoding: UTF-8
+
+  # --- Upload fichiers (preuves) ---
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+# ============================================================
+# JWT
+# ============================================================
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}       # 15 min
+  refresh-token-expiration-ms: ${JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000}  # 7 jours
+
+# ============================================================
+# MinIO — Stockage objet on-premise
+# ============================================================
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
+  buckets:
+    rapports: ${APP_MINIO_BUCKET_RAPPORTS:ancs-rapports}
+    preuves: ${APP_MINIO_BUCKET_PREUVES:ancs-preuves}
+  signed-url-expiry-hours: ${APP_REPORT_SIGNED_URL_EXPIRY_HOURS:24}
+
+# ============================================================
+# IA — Synthèse exécutive assistée
+# ============================================================
+ai:
+  # Provider actif : ollama (défaut, on-prem) | openai | anthropic
+  provider: ${AI_PROVIDER:ollama}
+
+  ollama:
+    base-url: ${AI_OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${AI_OLLAMA_MODEL:mistral}
+    timeout-seconds: ${AI_OLLAMA_TIMEOUT_SECONDS:60}
+
+  openai:
+    # ===========================================================
+    # ⚠️  AVERTISSEMENT SOUVERAINETÉ DES DONNÉES ⚠️
+    # Activer ce provider envoie des données de constats d'audit
+    # (potentiellement critiques) vers les serveurs d'OpenAI.
+    # Ne jamais activer sans validation formelle de la DGSI
+    # et de la direction générale de l'ANCS.
+    # ===========================================================
+    enabled: ${OPENAI_ENABLED:false}
+    api-key: ${OPENAI_API_KEY:}
+    model: gpt-4o
+
+# ============================================================
+# Firebase Cloud Messaging (notifications push)
+# ============================================================
+firebase:
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account-dev.json}
+  enabled: ${FIREBASE_ENABLED:false}
+
+# ============================================================
+# Application
+# ============================================================
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080
+
+# ============================================================
+# Actuator
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# ============================================================
+# Logging
+# ============================================================
+logging:
+  level:
+    tn.gov.ancs: INFO
+    org.springframework.security: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

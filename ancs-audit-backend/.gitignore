@@ -1,0 +1,35 @@
+# ============================================================
+# .gitignore — ANCS Audit Backend
+# ============================================================
+
+# ---- Fichiers sensibles (JAMAIS commiter) ------------------
+.env
+*.pem
+*.key
+*.p12
+*.jks
+firebase-service-account*.json
+/secrets/
+
+# ---- Maven -------------------------------------------------
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ---- IDE ---------------------------------------------------
+.idea/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# ---- Logs --------------------------------------------------
+logs/
+*.log
+
+# ---- OS ---------------------------------------------------
+.DS_Store
+Thumbs.db

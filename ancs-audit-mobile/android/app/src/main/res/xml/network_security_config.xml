@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuration de sécurité réseau.
+
+    SÉCURITÉ :
+    - En production, supprimez ou commentez le bloc <domain-config> ci-dessous.
+      Android bloque le trafic HTTP non chiffré par défaut depuis API 28.
+    - La section <debug-overrides> permet le HTTP seulement en mode debug (builds locaux).
+    - HTTPS est obligatoire pour tout déploiement vers un appareil réel ou un environnement
+      de staging/production (variable --dart-define=API_BASE_URL=https://...).
+-->
+<network-security-config>
+    <!-- Autoriser HTTP uniquement sur les builds DEBUG pour l'émulateur local -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- Autoriser HTTP vers le backend local de développement (émulateur Android) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+
+    <!-- Tout autre trafic : HTTPS uniquement -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

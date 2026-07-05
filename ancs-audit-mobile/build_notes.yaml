@@ -1,0 +1,6 @@
+# Fichier de configuration pour le build de l'application Flutter ANCS Audit Mobile.
+# Compatible Android (API 26+) et iOS (14+).
+
+# Version minimum requise pour les bibliothèques de chiffrement (TOTP, JWT)
+android:
+  minSdkVersion: 26

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ANCS institutional colors -->
+    <color name="primary_color">#002B5B</color>
+    <color name="background_color">#FFFFFF</color>
+</resources>

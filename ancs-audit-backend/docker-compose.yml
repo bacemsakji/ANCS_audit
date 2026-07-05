@@ -1,0 +1,196 @@
+version: "3.9"
+
+# ============================================================
+# ANCS — Stack de développement local
+# ============================================================
+# Services :
+#   - postgres    : PostgreSQL 16 (base de données principale)
+#   - minio       : Stockage objet on-premise (preuves, rapports)
+#   - ollama      : LLM auto-hébergé (synthèse IA)
+#   - pgadmin     : Interface d'administration PostgreSQL
+#   - backend     : Spring Boot API (décommenté après premier build)
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # PostgreSQL 16
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ancs_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ancs_audit}
+      POSTGRES_USER: ${POSTGRES_USER:-ancs_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ancs_secret_dev}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ancs_user} -d ${POSTGRES_DB:-ancs_audit}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ancs-network
+
+  # ----------------------------------------------------------
+  # MinIO — Stockage objet on-premise
+  # ----------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: ancs_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-ancs_minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ancs_minio_secret_dev}
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web MinIO
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - ancs-network
+
+  # Initialisation des buckets MinIO au démarrage
+  minio-init:
+    image: minio/mc:latest
+    container_name: ancs_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set ancs http://minio:9000 ${MINIO_ROOT_USER:-ancs_minio_admin} ${MINIO_ROOT_PASSWORD:-ancs_minio_secret_dev};
+      mc mb --ignore-existing ancs/ancs-rapports;
+      mc mb --ignore-existing ancs/ancs-preuves;
+      mc policy set private ancs/ancs-rapports;
+      mc policy set private ancs/ancs-preuves;
+      echo 'Buckets MinIO initialisés.';
+      "
+    networks:
+      - ancs-network
+
+  # ----------------------------------------------------------
+  # Ollama — LLM auto-hébergé pour la synthèse IA
+  # ----------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ancs_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Pour GPU NVIDIA : décommenter les lignes suivantes
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ancs-network
+
+  # Téléchargement du modèle Mistral au démarrage (une seule fois)
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: ancs_ollama_pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      ollama pull mistral;
+      echo 'Modèle Mistral téléchargé.';
+      "
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    networks:
+      - ancs-network
+
+  # ----------------------------------------------------------
+  # pgAdmin — Interface d'administration PostgreSQL
+  # ----------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ancs_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ancs.gov.tn}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-ancs_pgadmin_dev}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ancs-network
+
+  # ----------------------------------------------------------
+  # Backend Spring Boot
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ancs_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ancs_audit}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-ancs_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ancs_secret_dev}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-ancs_minio_admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-ancs_minio_secret_dev}
+      AI_OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ancs-network
+
+# ============================================================
+# Volumes persistants
+# ============================================================
+volumes:
+  postgres_data:
+    name: ancs_postgres_data
+  minio_data:
+    name: ancs_minio_data
+  ollama_data:
+    name: ancs_ollama_data
+  pgadmin_data:
+    name: ancs_pgadmin_data
+
+# ============================================================
+# Réseau isolé
+# ============================================================
+networks:
+  ancs-network:
+    name: ancs-network
+    driver: bridge

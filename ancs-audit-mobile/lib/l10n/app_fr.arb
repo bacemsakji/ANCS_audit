@@ -1,0 +1,17 @@
+{
+  "@@locale": "fr",
+  "appTitle": "ANCS Audit",
+  "loginTitle": "Portail d'Audit ANCS",
+  "loginSubtitle": "Réglementation Décret-loi 2023-17",
+  "emailLabel": "Adresse e-mail",
+  "passwordLabel": "Mot de passe",
+  "loginButton": "Se connecter",
+  "mfaVerifyTitle": "Vérification de sécurité (2FA)",
+  "mfaVerifyButton": "Valider",
+  "syncStatusOnline": "En ligne",
+  "syncStatusOffline": "Hors-ligne",
+  "generateIaSummaryButton": "Générer un brouillon (IA)",
+  "iaDraftBadge": "Généré par IA — à relire",
+  "iaOfflineError": "Fonction IA indisponible hors-ligne",
+  "validateAndInsertButton": "Valider et insérer dans le rapport"
+}

@@ -1,0 +1,17 @@
+{
+  "@@locale": "ar",
+  "appTitle": "تدقيق السلامة السيبرانية",
+  "loginTitle": "بوابة التدقيق للوكالة الوطنية للسلامة السيبرانية",
+  "loginSubtitle": "الإطار القانوني مرسوم 2023-17",
+  "emailLabel": "البريد الإلكتروني",
+  "passwordLabel": "كلمة المرور",
+  "loginButton": "تسجيل الدخول",
+  "mfaVerifyTitle": "التحقق الأمني الثنائي (2FA)",
+  "mfaVerifyButton": "تحقق",
+  "syncStatusOnline": "متصل بالشبكة",
+  "syncStatusOffline": "غير متصل بالشبكة",
+  "generateIaSummaryButton": "توليد مسودة بالذكاء الاصطناعي",
+  "iaDraftBadge": "مسودة مولّدة بالذكاء الاصطناعي — يرجى المراجعة",
+  "iaOfflineError": "خاصية الذكاء الاصطناعي غير متوفرة بدون إنترنت",
+  "validateAndInsertButton": "اعتماد وإدراج في التقرير"
+}

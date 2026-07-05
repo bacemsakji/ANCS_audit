@@ -1,0 +1,54 @@
+# ============================================================
+# Profil DEV — surcharge application.yml
+# ============================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ancs_audit
+    username: ancs_user
+    password: ancs_secret_dev
+    hikari:
+      pool-name: AncsHikariPool-Dev
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: validate  # Flyway gère le DDL
+
+  flyway:
+    clean-disabled: false  # Autorisé en DEV uniquement
+
+jwt:
+  secret: dev_secret_key_NOT_for_production_must_be_256_bits_minimum_base64encoded_here
+  access-token-expiration-ms: 3600000   # 1h en DEV pour faciliter les tests
+  refresh-token-expiration-ms: 604800000
+
+minio:
+  endpoint: http://localhost:9000
+  access-key: ancs_minio_admin
+  secret-key: ancs_minio_secret_dev
+
+ai:
+  provider: ollama
+  ollama:
+    base-url: http://localhost:11434
+    model: mistral
+
+firebase:
+  enabled: false   # Désactivé en DEV (pas de vrai service account)
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080
+      - http://10.0.2.2:8080
+
+logging:
+  level:
+    tn.gov.ancs: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
