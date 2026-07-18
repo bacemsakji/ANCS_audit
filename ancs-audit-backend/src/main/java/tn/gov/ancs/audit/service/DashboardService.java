@@ -40,7 +40,7 @@ public class DashboardService {
         long planifiees = missionRepository.countByStatut(StatutMission.PLANIFIEE);
         long terminees = missionRepository.countByStatut(StatutMission.TERMINEE);
         
-        long auditeursActifs = auditeurRepository.count(); // simplifiée
+        long auditeursActifs = auditeurRepository.countByStatut(StatutAuditeur.ACTIF);
         long totalOrganismes = organismeRepository.count();
 
         // Alertes expirations certifications (dans les 30 prochains jours)
@@ -100,6 +100,9 @@ public class DashboardService {
         long enCours = actionsActives.stream().filter(a -> "EN_COURS".equals(a.getStatut())).count();
         long enRetard = actionsActives.stream().filter(a -> "EN_RETARD".equals(a.getStatut())).count();
         long cloturees = actionRepository.countClotureesParOrganisme(organismeId);
+
+        log.info("RSSI Dashboard for org {}: {} completed missions, score: {}, actions: {}",
+            org.getNom(), totalRealisees, scoreDernierAudit, actionsActives.size());
 
         return DashboardRssiResponse.builder()
             .organismeNom(org.getNom())

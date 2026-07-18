@@ -1,21 +1,19 @@
 version: "3.9"
 
 # ============================================================
-# ANCS — Stack de développement local
+# ANCS — Stack de développement local (Optimisée)
 # ============================================================
 # Services :
-#   - postgres    : PostgreSQL 16 (base de données principale)
-#   - minio       : Stockage objet on-premise (preuves, rapports)
-#   - ollama      : LLM auto-hébergé (synthèse IA)
+#   - postgres    : PostgreSQL 16
+#   - minio       : Stockage objet (preuves, rapports)
 #   - pgadmin     : Interface d'administration PostgreSQL
-#   - backend     : Spring Boot API (décommenté après premier build)
+#
+# NOTE: Les services Ollama et Backend sont commentés pour
+# économiser les ressources car ils tournent en local sur l'hôte.
 # ============================================================
 
 services:
 
-  # ----------------------------------------------------------
-  # PostgreSQL 16
-  # ----------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: ancs_postgres
@@ -37,9 +35,6 @@ services:
     networks:
       - ancs-network
 
-  # ----------------------------------------------------------
-  # MinIO — Stockage objet on-premise
-  # ----------------------------------------------------------
   minio:
     image: minio/minio:latest
     container_name: ancs_minio
@@ -49,8 +44,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-ancs_minio_admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ancs_minio_secret_dev}
     ports:
-      - "9000:9000"   # API S3
-      - "9001:9001"   # Console web MinIO
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -61,7 +56,6 @@ services:
     networks:
       - ancs-network
 
-  # Initialisation des buckets MinIO au démarrage
   minio-init:
     image: minio/mc:latest
     container_name: ancs_minio_init
@@ -80,54 +74,38 @@ services:
     networks:
       - ancs-network
 
-  # ----------------------------------------------------------
-  # Ollama — LLM auto-hébergé pour la synthèse IA
-  # ----------------------------------------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ancs_ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    # Pour GPU NVIDIA : décommenter les lignes suivantes
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    networks:
-      - ancs-network
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ancs_ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #   networks:
+  #     - ancs-network
 
-  # Téléchargement du modèle Mistral au démarrage (une seule fois)
-  ollama-pull:
-    image: ollama/ollama:latest
-    container_name: ancs_ollama_pull
-    depends_on:
-      ollama:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      ollama pull mistral;
-      echo 'Modèle Mistral téléchargé.';
-      "
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    networks:
-      - ancs-network
+  # ollama-pull:
+  #   image: ollama/ollama:latest
+  #   container_name: ancs_ollama_pull
+  #   depends_on:
+  #     ollama:
+  #       condition: service_healthy
+  #   entrypoint: >
+  #     /bin/sh -c "
+  #     ollama pull qwen2.5-coder:3b;
+  #     echo 'Modèle Qwen téléchargé.';
+  #     "
+  #   environment:
+  #     OLLAMA_HOST: http://ollama:11434
+  #   networks:
+  #     - ancs-network
 
-  # ----------------------------------------------------------
-  # pgAdmin — Interface d'administration PostgreSQL
-  # ----------------------------------------------------------
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: ancs_pgadmin
@@ -146,50 +124,39 @@ services:
     networks:
       - ancs-network
 
-  # ----------------------------------------------------------
-  # Backend Spring Boot
-  # ----------------------------------------------------------
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ancs_backend
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ancs_audit}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-ancs_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ancs_secret_dev}
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-ancs_minio_admin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-ancs_minio_secret_dev}
-      AI_OLLAMA_BASE_URL: http://ollama:11434
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    networks:
-      - ancs-network
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: ancs_backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: dev
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ancs_audit}
+  #     SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-ancs_user}
+  #     SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ancs_secret_dev}
+  #     MINIO_ENDPOINT: http://minio:9000
+  #     AI_OLLAMA_BASE_URL: http://ollama:11434
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
+  #   networks:
+  #     - ancs-network
 
-# ============================================================
-# Volumes persistants
-# ============================================================
 volumes:
   postgres_data:
     name: ancs_postgres_data
   minio_data:
     name: ancs_minio_data
-  ollama_data:
-    name: ancs_ollama_data
+  # ollama_data:
+  #   name: ancs_ollama_data
   pgadmin_data:
     name: ancs_pgadmin_data
 
-# ============================================================
-# Réseau isolé
-# ============================================================
 networks:
   ancs-network:
     name: ancs-network

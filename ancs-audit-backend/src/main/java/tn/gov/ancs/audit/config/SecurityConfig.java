@@ -48,7 +48,7 @@ public class SecurityConfig {
     private final Environment environment;
 
     @Value("${app.cors.allowed-origins}")
-    private List<String> allowedOrigins;
+    private String allowedOrigins;
 
     // Endpoints publics toujours accessibles (authentification)
     private static final String[] PUBLIC_ENDPOINTS = {
@@ -140,7 +140,9 @@ public class SecurityConfig {
         // BUG CORRIGÉ : Ne jamais utiliser allowedOriginPatterns("*") avec allowCredentials(true)
         // Cela viole la spec CORS et expose l'API à des attaques CSRF depuis n'importe quel domaine.
         // On utilise la liste d'origines explicitement configurée dans application.yml.
-        config.setAllowedOrigins(allowedOrigins);
+        // Parse la chaîne séparée par des virgules en liste d'origines
+        List<String> originsList = Arrays.asList(allowedOrigins.split(","));
+        config.setAllowedOrigins(originsList);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of(
             "Authorization", "Content-Type", "Accept", "X-Requested-With",

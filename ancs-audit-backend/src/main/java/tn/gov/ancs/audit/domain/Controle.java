@@ -18,8 +18,9 @@ import lombok.*;
     name = "controle",
     indexes = {
         @Index(name = "idx_controle_referentiel", columnList = "referentiel_id"),
-        @Index(name = "idx_controle_categorie", columnList = "categorie"),
-        @Index(name = "idx_controle_criticite", columnList = "criticite")
+        @Index(name = "idx_controle_categorie",   columnList = "categorie"),
+        @Index(name = "idx_controle_criticite",   columnList = "criticite"),
+        @Index(name = "idx_controle_sous_critere", columnList = "sous_critere")
     }
 )
 @Getter
@@ -54,6 +55,14 @@ public class Controle extends BaseEntity {
     @Size(max = 100)
     @Column(name = "categorie", length = 100)
     private String categorie;
+
+    /**
+     * Référence ISO/IEC 27002:2022 du contrôle (ex. : "5.1", "8.24").
+     * Null pour les contrôles hors ISO 27002.
+     */
+    @Size(max = 10)
+    @Column(name = "sous_critere", length = 10)
+    private String sousCritere;
 
     /** Ordre d'affichage dans la checklist d'audit. */
     @Column(name = "ordre_affichage")

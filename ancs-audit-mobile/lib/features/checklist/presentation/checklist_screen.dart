@@ -1,16 +1,22 @@
+import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart' as dio;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/shimmer_card.dart';
 import '../data/constat_repository.dart';
 import '../data/referentiel_repository.dart';
+import '../../missions/data/mission_repository.dart';
 
 class ChecklistScreen extends StatefulWidget {
   final String missionId;
   final String referentielId;
   final ConstatRepository constatRepository;
   final ReferentielRepository referentielRepository;
+  final MissionRepository missionRepository;
   final bool isOnline;
 
   const ChecklistScreen({
@@ -19,6 +25,7 @@ class ChecklistScreen extends StatefulWidget {
     required this.referentielId,
     required this.constatRepository,
     required this.referentielRepository,
+    required this.missionRepository,
     required this.isOnline,
   }) : super(key: key);
 
@@ -31,6 +38,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Map<String, Map<String, dynamic>> _constatsMap = {}; // Key: controleId, Value: constatData
   bool _isLoading = true;
   String? _error;
+  bool _isCompleting = false;
 
   @override
   void initState() {
@@ -57,7 +65,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         }
       } catch (e) {
         // En cas d'échec offline, on ignore les constats existants du serveur (on s'appuie sur le cache local Drift en production)
-        print("Erreur réseau lors de la récupération des constats du serveur: $e");
+        developer.log("Erreur réseau lors de la récupération des constats du serveur: $e", name: 'ChecklistScreen', error: e);
       }
 
       setState(() {
@@ -73,7 +81,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     }
   }
 
-  Future<void> _saveConstat(String controleId, String resultat, String commentaire) async {
+  Future<void> _saveConstat(String controleId, String resultat, String commentaire, String? imagePath) async {
     final mockId = '${widget.missionId}_$controleId';
     
     // Mettre à jour l'UI locale
@@ -92,8 +100,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         controleId: controleId,
         resultat: resultat,
         commentaire: commentaire,
+        imagePath: imagePath,
         isOnline: widget.isOnline,
       );
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -105,12 +116,57 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erreur d\'enregistrement'),
           backgroundColor: AppColors.nonConforme,
         ),
       );
+    }
+  }
+
+  Future<void> _completeMission() async {
+    if (!widget.isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de terminer la mission hors-ligne'),
+          backgroundColor: AppColors.observation,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isCompleting = true);
+
+    try {
+      await widget.missionRepository.updateStatus(widget.missionId, 'TERMINEE');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mission terminée avec succès'),
+          backgroundColor: AppColors.conforme,
+        ),
+      );
+
+      // Navigate back to missions list
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de la terminaison de la mission: $e'),
+          backgroundColor: AppColors.nonConforme,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isCompleting = false);
+      }
     }
   }
 
@@ -121,20 +177,40 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       appBar: AppBar(
         title: const Text('Checklist d\'Audit'),
         actions: [
+          if (widget.isOnline)
+            IconButton(
+              icon: _isCompleting 
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.check_circle_outline),
+              tooltip: 'Terminer la mission',
+              onPressed: _isCompleting ? null : _completeMission,
+            ),
           IconButton(
             icon: const Icon(Icons.sync),
-            onPressed: () async {
-              if (widget.isOnline) {
-                await widget.constatRepository.syncPendingConstats();
-                _loadData();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Impossible de synchroniser en mode hors-ligne'),
-                    backgroundColor: AppColors.observation,
+            tooltip: 'Synchronisation automatique à la reconnexion',
+            onPressed: () {
+              // La synchronisation est gérée automatiquement par SyncService
+              // dès que la connexion réseau est rétablie. Ce bouton informe
+              // l'auditeur de l'état actuel.
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    widget.isOnline
+                        ? 'Connecté — les constats hors-ligne seront synchronisés automatiquement'
+                        : 'Hors-ligne — synchronisation automatique à la reconnexion',
                   ),
-                );
-              }
+                  backgroundColor: widget.isOnline
+                      ? AppColors.conforme
+                      : AppColors.observation,
+                ),
+              );
             },
           ),
         ],
@@ -157,7 +233,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     return _ChecklistItemCard(
                       controle: ctrl,
                       constat: constat,
-                      onSave: (resultat, commentaire) => _saveConstat(ctrlId, resultat, commentaire),
+                      onSave: (resultat, commentaire, imagePath) => _saveConstat(ctrlId, resultat, commentaire, imagePath),
                     );
                   },
                 ),
@@ -182,7 +258,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 class _ChecklistItemCard extends StatefulWidget {
   final Map<String, dynamic> controle;
   final Map<String, dynamic>? constat;
-  final Function(String, String) onSave;
+  final Function(String, String, String?) onSave;
 
   const _ChecklistItemCard({
     Key? key,
@@ -198,6 +274,8 @@ class _ChecklistItemCard extends StatefulWidget {
 class _ChecklistItemCardState extends State<_ChecklistItemCard> {
   String? _selectedResultat;
   final _commentController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
+  String? _selectedImagePath;
 
   @override
   void initState() {
@@ -219,6 +297,20 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
+      if (image != null) {
+        setState(() => _selectedImagePath = image.path);
+      }
+    } catch (e) {
+      developer.log("Erreur lors de la sélection de l'image: $e", name: 'ChecklistScreen', error: e);
+    }
   }
 
   @override
@@ -285,6 +377,49 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
             ),
             const SizedBox(height: AppSpacing.m),
 
+            // Preuve (image upload)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.camera_alt, size: 16),
+                    label: Text(_selectedImagePath != null ? 'Changer la preuve' : 'Ajouter une preuve'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+                if (_selectedImagePath != null) ...[
+                  const SizedBox(width: AppSpacing.s),
+                  IconButton(
+                    icon: const Icon(Icons.clear, color: AppColors.nonConforme),
+                    onPressed: () => setState(() => _selectedImagePath = null),
+                  ),
+                ],
+              ],
+            ),
+            if (_selectedImagePath != null) ...[
+              const SizedBox(height: AppSpacing.s),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  File(_selectedImagePath!),
+                  height: 100,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 100,
+                      color: AppColors.background,
+                      child: const Center(child: Text('Impossible de charger l\'image')),
+                    );
+                  },
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.m),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -301,7 +436,7 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                 ElevatedButton.icon(
                   onPressed: _selectedResultat == null 
                       ? null 
-                      : () => widget.onSave(_selectedResultat!, _commentController.text),
+                      : () => widget.onSave(_selectedResultat!, _commentController.text, _selectedImagePath),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

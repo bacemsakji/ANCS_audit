@@ -36,7 +36,6 @@ public interface MissionRepository extends JpaRepository<Mission, UUID> {
     @Query("""
         SELECT COUNT(m) FROM Mission m
         WHERE m.organisme.id = :organismeId AND m.statut = 'TERMINEE'
-        ORDER BY m.createdAt DESC
         """)
     long countTermineesParOrganisme(UUID organismeId);
 }

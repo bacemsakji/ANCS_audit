@@ -19,5 +19,7 @@ public class ControleResponse {
     private String description;
     private String criticite;
     private String categorie;
+    /** Référence ISO/IEC 27002:2022, ex. "5.1", "8.24". Null pour contrôles hors norme. */
+    private String sousCritere;
     private Integer ordreAffichage;
 }

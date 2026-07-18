@@ -61,6 +61,18 @@ public class Constat extends BaseEntity {
     @Column(name = "date_constat")
     private Instant dateConstat;
 
+    @Column(name = "criticite", length = 20)
+    private String criticite;
+
+    @Column(name = "preuve_description", columnDefinition = "TEXT")
+    private String preuveDescription;
+
+    @Column(name = "recommandation", columnDefinition = "TEXT")
+    private String recommandation;
+
+    @Column(name = "composantes_impactees", columnDefinition = "TEXT")
+    private String composantesImpactees;
+
     /**
      * Indicateur de synchronisation.
      * {@code false} : enregistrement local non encore transmis au serveur.

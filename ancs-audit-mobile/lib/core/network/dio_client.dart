@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// utiliser toujours la variable --dart-define en CI/CD.
 const String kBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8080', // émulateur Android → localhost
+  defaultValue: 'http://localhost:8081',
 );
 
 class DioClient {

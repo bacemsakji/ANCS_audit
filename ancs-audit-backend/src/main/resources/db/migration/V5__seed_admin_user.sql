@@ -18,7 +18,7 @@ VALUES (
     'Administrateur ANCS',
     'admin@ancs.gov.tn',
     -- Hash BCrypt(12) de "Admin@ANCS2024!" — CHANGER EN PRODUCTION
-    '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewFqVExL1sRl2qzu',
+    '$2a$12$u0PAGakYWFotxDxRSnqJ0OTSxjW5PZ0OnGRHLGKtD4VymzPtcU8.2',
     'ADMIN_ANCS',
     false,   -- 2FA à configurer lors de la première connexion
     true,

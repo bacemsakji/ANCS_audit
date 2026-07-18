@@ -28,4 +28,26 @@ class MissionRepository {
       queryParameters: {'statut': statut},
     );
   }
+
+  Future<List<dynamic>> getOrganismes() async {
+    final response = await _dioClient.instance.get('/api/organismes/list');
+    return response.data as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getAuditeurs() async {
+    final response = await _dioClient.instance.get('/api/auditeurs/list');
+    return response.data as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getReferentiels() async {
+    final response = await _dioClient.instance.get(
+      '/api/referentiels',
+      queryParameters: {'type': 'CONTROLE_TECHNIQUE'},
+    );
+    return response.data as List<dynamic>;
+  }
+
+  Future<void> createMission(Map<String, dynamic> request) async {
+    await _dioClient.instance.post('/api/missions', data: request);
+  }
 }

@@ -30,4 +30,10 @@ public interface AuditeurRepository extends JpaRepository<Auditeur, UUID> {
     List<Auditeur> findActifsExpirantAvant(LocalDate dateLimite);
 
     boolean existsByNumeroCertification(String numeroCertification);
+
+    /**
+     * Nombre d'auditeurs ayant un statut donné.
+     * Utilisé par le dashboard admin pour afficher le nombre d'auditeurs actifs.
+     */
+    long countByStatut(StatutAuditeur statut);
 }

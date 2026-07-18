@@ -6,13 +6,17 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import tn.gov.ancs.audit.domain.Action;
 import tn.gov.ancs.audit.domain.Constat;
 import tn.gov.ancs.audit.domain.Controle;
 import tn.gov.ancs.audit.domain.Mission;
+import tn.gov.ancs.audit.domain.enums.PrioriteAction;
 import tn.gov.ancs.audit.domain.enums.ResultatConstat;
+import tn.gov.ancs.audit.domain.enums.StatutAction;
 import tn.gov.ancs.audit.dto.request.ConstatRequest;
 import tn.gov.ancs.audit.dto.response.ConstatResponse;
 import tn.gov.ancs.audit.exception.ResourceNotFoundException;
+import tn.gov.ancs.audit.repository.ActionRepository;
 import tn.gov.ancs.audit.repository.ConstatRepository;
 import tn.gov.ancs.audit.repository.ControleRepository;
 import tn.gov.ancs.audit.repository.MissionRepository;
@@ -32,6 +36,7 @@ public class ConstatService {
     private final MissionRepository missionRepository;
     private final ControleRepository controleRepository;
     private final StorageService storageService;
+    private final ActionRepository actionRepository;
 
     @Transactional
     @AuditAction(action = "SUBMIT_CONSTAT", resource = "CONSTAT")
@@ -55,6 +60,13 @@ public class ConstatService {
         constat.setCommentaire(request.getCommentaire());
         constat.setDateConstat(Instant.now());
         constat.setSynced(true); // Directement synchronisé via l'API REST
+        
+        // Nouveaux champs ANCS 2.1
+        constat.setCriticite(request.getCriticite() != null && !request.getCriticite().trim().isEmpty()
+            ? request.getCriticite() : (controle.getCriticite() != null ? controle.getCriticite() : "MOYEN"));
+        constat.setPreuveDescription(request.getPreuveDescription());
+        constat.setRecommandation(request.getRecommandation());
+        constat.setComposantesImpactees(request.getComposantesImpactees());
 
         if (request.getPreuveUrl() != null) {
             constat.setPreuveUrl(request.getPreuveUrl());
@@ -63,6 +75,11 @@ public class ConstatService {
         Constat saved = constatRepository.save(constat);
         log.debug("Constat enregistré : mission {}, contrôle {}, résultat {}", 
             mission.getId(), controle.getId(), request.getResultat());
+
+        // Auto-création d'une action corrective pour les constats NON_CONFORME
+        if (request.getResultat() == ResultatConstat.NON_CONFORME) {
+            createDefaultAction(saved, controle);
+        }
 
         return mapToResponse(saved);
     }
@@ -125,6 +142,43 @@ public class ConstatService {
             .commentaire(c.getCommentaire())
             .dateConstat(c.getDateConstat())
             .synced(c.getSynced())
+            .criticite(c.getCriticite() != null ? c.getCriticite() : (c.getControle().getCriticite() != null ? c.getControle().getCriticite() : "MOYEN"))
+            .preuveDescription(c.getPreuveDescription())
+            .recommandation(c.getRecommandation())
+            .composantesImpactees(c.getComposantesImpactees())
             .build();
+    }
+
+    /**
+     * Crée automatiquement une action corrective par défaut pour un constat non conforme.
+     * L'auditeur peut ensuite modifier la description, l'échéance et le responsable.
+     */
+    private void createDefaultAction(Constat constat, Controle controle) {
+        try {
+            Action action = Action.builder()
+                .constat(constat)
+                .description("Action corrective requise pour : " + controle.getLibelle())
+                .responsable(null) // À définir par l'auditeur
+                .echeance(null) // À définir par l'auditeur
+                .priorite(determinePrioriteFromCriticite(controle.getCriticite()))
+                .statut(StatutAction.A_FAIRE)
+                .build();
+
+            actionRepository.save(action);
+            log.info("Action corrective par défaut créée pour le constat non conforme {}", constat.getId());
+        } catch (Exception e) {
+            log.error("Erreur lors de la création automatique de l'action corrective", e);
+            // Ne pas bloquer la sauvegarde du constat en cas d'échec
+        }
+    }
+
+    private PrioriteAction determinePrioriteFromCriticite(String criticite) {
+        if (criticite == null) return PrioriteAction.MOYENNE;
+        return switch (criticite.toUpperCase()) {
+            case "CRITIQUE" -> PrioriteAction.CRITIQUE;
+            case "ELEVE" -> PrioriteAction.HAUTE;
+            case "FAIBLE" -> PrioriteAction.FAIBLE;
+            default -> PrioriteAction.MOYENNE;
+        };
     }
 }

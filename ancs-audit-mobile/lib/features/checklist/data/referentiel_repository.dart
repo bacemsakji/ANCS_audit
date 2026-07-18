@@ -11,7 +11,10 @@ class ReferentielRepository {
   }
 
   Future<List<dynamic>> getReferentiels() async {
-    final response = await _dioClient.instance.get('/api/referentiels');
+    final response = await _dioClient.instance.get(
+      '/api/referentiels',
+      queryParameters: {'type': 'CONTROLE_TECHNIQUE'},
+    );
     return response.data as List<dynamic>;
   }
 }

@@ -15,6 +15,8 @@ import tn.gov.ancs.audit.service.RapportService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import tn.gov.ancs.audit.domain.enums.Role;
+import tn.gov.ancs.audit.domain.enums.StatutSoumissionAncs;
 
 @RestController
 @RequestMapping("/api/rapports")
@@ -85,6 +87,51 @@ public class RapportController {
         Map<String, String> response = new HashMap<>();
         response.put("downloadUrl", downloadUrl);
 
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/soumettre")
+    @PreAuthorize("hasAnyRole('ADMIN_ANCS', 'AUDITEUR')")
+    public ResponseEntity<Map<String, Object>> submitRapport(
+            @PathVariable("id") UUID id,
+            Authentication authentication) {
+        Utilisateur user = utilisateurRepository.findByEmailIgnoreCase(authentication.getName())
+            .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecté non trouvé"));
+
+        Rapport rapport = rapportService.submitRapport(id, user.getEmail(), user.getRole());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("rapportId", rapport.getId());
+        response.put("statutSoumissionAncs", rapport.getStatutSoumissionAncs().name());
+        response.put("dateSoumissionAncs", rapport.getDateSoumissionAncs());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/accepter")
+    @PreAuthorize("hasRole('ADMIN_ANCS')")
+    public ResponseEntity<Map<String, Object>> acceptRapport(
+            @PathVariable("id") UUID id) {
+        Rapport rapport = rapportService.acceptRapport(id);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("rapportId", rapport.getId());
+        response.put("statutSoumissionAncs", rapport.getStatutSoumissionAncs().name());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/rejeter")
+    @PreAuthorize("hasRole('ADMIN_ANCS')")
+    public ResponseEntity<Map<String, Object>> rejectRapport(
+            @PathVariable("id") UUID id,
+            @RequestBody Map<String, String> requestBody) {
+        String motifRejet = requestBody.get("motifRejet");
+        Rapport rapport = rapportService.rejectRapport(id, motifRejet);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("rapportId", rapport.getId());
+        response.put("statutSoumissionAncs", rapport.getStatutSoumissionAncs().name());
+        response.put("motifRejet", rapport.getMotifRejet());
+        response.put("dateLimiteResoumission", rapport.getDateLimiteResoumission());
         return ResponseEntity.ok(response);
     }
 }

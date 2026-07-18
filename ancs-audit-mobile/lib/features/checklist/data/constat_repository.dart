@@ -1,4 +1,6 @@
-import 'package:dio/dio.dart';
+import 'dart:developer' as developer;
+import 'package:dio/dio.dart' as dio;
+import 'package:flutter/foundation.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/local_db/app_database.dart';
 import 'package:drift/drift.dart';
@@ -23,14 +25,42 @@ class ConstatRepository {
     required String controleId,
     required String resultat,
     String? commentaire,
+    String? imagePath,
     bool isOnline = true,
+    String? criticite,
+    String? preuveDescription,
+    String? recommandation,
+    String? composantesImpactees,
   }) async {
     if (isOnline) {
+      // Si une image est fournie, l'uploader d'abord
+      String? preuveUrl;
+      if (imagePath != null) {
+        try {
+          final formData = dio.FormData.fromMap({
+            'file': await dio.MultipartFile.fromFile(imagePath),
+          });
+          final response = await _dioClient.instance.post(
+            '/api/constats/$id/preuve',
+            data: formData,
+          );
+          preuveUrl = response.data['preuveUrl'];
+        } catch (e) {
+          developer.log("Erreur lors de l'upload de la preuve: $e", name: 'ConstatRepository', error: e);
+          // Continuer sans la preuve en cas d'erreur
+        }
+      }
+
       await _dioClient.instance.post('/api/constats', data: {
         'missionId': missionId,
         'controleId': controleId,
         'resultat': resultat,
         'commentaire': commentaire,
+        if (preuveUrl != null) 'preuveUrl': preuveUrl,
+        if (criticite != null) 'criticite': criticite,
+        if (preuveDescription != null) 'preuveDescription': preuveDescription,
+        if (recommandation != null) 'recommandation': recommandation,
+        if (composantesImpactees != null) 'composantesImpactees': composantesImpactees,
       });
     } else {
       // Stockage local en attente de synchronisation
@@ -41,32 +71,20 @@ class ConstatRepository {
           controleId: Value(controleId),
           resultat: Value(resultat),
           commentaire: Value(commentaire),
+          preuveUrl: Value(imagePath), // Stocker le chemin local temporairement
+          criticite: Value(criticite),
+          preuveDescription: Value(preuveDescription),
+          recommandation: Value(recommandation),
+          composantesImpactees: Value(composantesImpactees),
           synced: const Value(false),
         ),
       );
     }
   }
 
-  /// Synchronise tous les constats locaux non synchronisés.
-  Future<void> syncPendingConstats() async {
-    final pending = await (_db.select(_db.localConstatTable)
-          ..where((t) => t.synced.equals(false)))
-        .get();
-
-    for (final c in pending) {
-      try {
-        await _dioClient.instance.post('/api/constats', data: {
-          'missionId': c.missionId,
-          'controleId': c.controleId,
-          'resultat': c.resultat,
-          'commentaire': c.commentaire,
-        });
-        await (_db.update(_db.localConstatTable)
-              ..where((t) => t.id.equals(c.id)))
-            .write(const LocalConstatTableCompanion(synced: Value(true)));
-      } catch (_) {
-        // Laisser en attente si la synchronisation échoue
-      }
-    }
-  }
+  // La synchronisation des constats hors-ligne est gérée exclusivement par
+  // SyncService.triggerSync() (core/network/sync_service.dart), qui gère
+  // également l'upload multipart des preuves avant l'envoi des métadonnées.
+  // Ne pas dupliquer cette logique ici.
 }
+

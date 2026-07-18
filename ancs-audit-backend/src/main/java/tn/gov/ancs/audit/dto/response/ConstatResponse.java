@@ -24,4 +24,8 @@ public class ConstatResponse {
     private String commentaire;
     private Instant dateConstat;
     private boolean synced;
+    private String criticite;
+    private String preuveDescription;
+    private String recommandation;
+    private String composantesImpactees;
 }

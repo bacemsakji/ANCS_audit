@@ -57,7 +57,7 @@ public class AiConfig {
     public static class OllamaProperties {
         private String baseUrl = "http://localhost:11434";
         private String model = "mistral";
-        private int timeoutSeconds = 60;
+        private int timeoutSeconds = 120;
     }
 
     @Getter

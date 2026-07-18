@@ -67,6 +67,7 @@ public class ReferentielService {
             .description(c.getDescription())
             .criticite(c.getCriticite())
             .categorie(c.getCategorie())
+            .sousCritere(c.getSousCritere())
             .ordreAffichage(c.getOrdreAffichage())
             .build();
     }

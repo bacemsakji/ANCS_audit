@@ -13,6 +13,7 @@ import tn.gov.ancs.audit.domain.Organisme;
 import tn.gov.ancs.audit.domain.Referentiel;
 import tn.gov.ancs.audit.domain.enums.Role;
 import tn.gov.ancs.audit.domain.enums.StatutMission;
+import tn.gov.ancs.audit.domain.enums.TypeReferentiel;
 import tn.gov.ancs.audit.dto.request.CreateMissionRequest;
 import tn.gov.ancs.audit.dto.response.MissionResponse;
 import tn.gov.ancs.audit.exception.ResourceNotFoundException;
@@ -45,6 +46,10 @@ public class MissionService {
 
         Referentiel referentiel = referentielRepository.findById(request.getReferentielId())
             .orElseThrow(() -> new ResourceNotFoundException("Référentiel non trouvé avec l'id: " + request.getReferentielId()));
+
+        if (referentiel.getType() != TypeReferentiel.CONTROLE_TECHNIQUE) {
+            throw new IllegalArgumentException("Le référentiel sélectionné doit être de type CONTROLE_TECHNIQUE");
+        }
 
         Mission mission = Mission.builder()
             .organisme(organisme)

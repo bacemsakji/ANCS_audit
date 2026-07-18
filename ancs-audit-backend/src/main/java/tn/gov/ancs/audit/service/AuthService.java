@@ -88,7 +88,7 @@ public class AuthService {
         }
 
         // Vérifier si la double authentification (2FA) est requise pour cet utilisateur
-        if (utilisateur.getRole() == Role.ADMIN_ANCS) {
+        if (utilisateur.getRole() == Role.ADMIN_ANCS && utilisateur.getTotpEnabled()) {
             log.info("Authentification à deux facteurs requise pour l'administrateur: {}", utilisateur.getEmail());
             
             // SÉCURITÉ : Génération d'un token MFA temporaire signé pour lier cette étape à la validation TOTP

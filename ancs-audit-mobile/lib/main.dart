@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_event.dart';
 import 'features/auth/bloc/auth_state.dart';
@@ -14,24 +13,46 @@ import 'features/checklist/data/constat_repository.dart';
 import 'features/checklist/data/referentiel_repository.dart';
 import 'features/rapports/presentation/rapport_generation_screen.dart';
 import 'features/rapports/data/rapport_repository.dart';
+import 'features/missions/presentation/mission_detail_screen.dart';
+import 'features/missions/data/mission_repository.dart';
 import 'core/network/dio_client.dart';
 import 'core/network/sync_service.dart';
 import 'core/theme/app_theme.dart';
-import 'core/constants/app_colors.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/local_db/app_database.dart';
+import 'l10n/app_localizations.dart';
 
-const String kBaseUrl = 'http://10.0.2.2:8080'; // Android emulator → localhost
+// L'URL de base est configurée via --dart-define=API_BASE_URL=https://api.ancs.gov.tn
+// à la compilation. La valeur par défaut (localhost) est définie dans dio_client.dart.
+// Ne pas redéfinir kBaseUrl ici — utiliser directement DioClient() sans argument.
+//
+// Exemple de build de production :
+//   flutter build apk --dart-define=API_BASE_URL=https://api.ancs.gov.tn
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final dioClient = DioClient(kBaseUrl);
+  // Une seule instance de DioClient, partagée avec tous les repositories et
+  // le SyncService — garantit que le mécanisme --dart-define est appliqué
+  // de manière cohérente dans toute l'application.
+  final dioClient = DioClient();
   final authRepository = AuthRepository(dioClient: dioClient);
-  runApp(AncsAuditApp(authRepository: authRepository));
+  final appDatabase = AppDatabase();
+  runApp(AncsAuditApp(
+    dioClient: dioClient,
+    authRepository: authRepository,
+    appDatabase: appDatabase,
+  ));
 }
 
 class AncsAuditApp extends StatefulWidget {
+  final DioClient dioClient;
   final AuthRepository authRepository;
-  const AncsAuditApp({Key? key, required this.authRepository}) : super(key: key);
+  final AppDatabase appDatabase;
+  const AncsAuditApp({
+    Key? key,
+    required this.dioClient,
+    required this.authRepository,
+    required this.appDatabase,
+  }) : super(key: key);
 
   @override
   State<AncsAuditApp> createState() => _AncsAuditAppState();
@@ -44,7 +65,12 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
   @override
   void initState() {
     super.initState();
-    _syncService = SyncService();
+    // SyncService reçoit le même DioClient que le reste de l'application —
+    // la synchronisation arrière-plan cible exactement la même URL que l'UI.
+    _syncService = SyncService(
+      database: widget.appDatabase,
+      dioClient: widget.dioClient,
+    );
   }
 
   @override
@@ -66,12 +92,8 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.buildTheme(_isArabic),
             locale: _locale,
-            supportedLocales: const [Locale('fr'), Locale('ar')],
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
             routerConfig: _buildRouter(context, authState),
           );
         },
@@ -108,21 +130,31 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
           ),
         ),
         GoRoute(
+          path: '/missions/:id',
+          builder: (context, state) {
+            final mission = state.extra as Map<String, dynamic>? ?? {};
+            final userRole = authState is AuthAuthenticated ? authState.role : 'AUDITEUR';
+            return MissionDetailScreen(mission: mission, userRole: userRole);
+          },
+        ),
+        GoRoute(
           path: '/missions/:id/checklist',
           builder: (context, state) {
             final missionId = state.pathParameters['id']!;
             final mission = state.extra as Map<String, dynamic>? ?? {};
             final referentielId = (mission['referentielId'] ?? '').toString();
-            final dioClient = DioClient(kBaseUrl);
 
+            // Le DioClient partagé est réutilisé — pas de nouvelle instance ici.
             return ChecklistScreen(
               missionId: missionId,
               referentielId: referentielId,
               constatRepository: ConstatRepository(
-                dioClient: dioClient,
-                db: SyncService().database,
+                dioClient: widget.dioClient,
+                db: widget.appDatabase,
               ),
-              referentielRepository: ReferentielRepository(dioClient: dioClient),
+              referentielRepository:
+                  ReferentielRepository(dioClient: widget.dioClient),
+              missionRepository: MissionRepository(dioClient: widget.dioClient),
               isOnline: true, // par défaut connecté en test
             );
           },
@@ -133,12 +165,11 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
             final missionId = state.pathParameters['id']!;
             final mission = state.extra as Map<String, dynamic>? ?? {};
             final orgNom = mission['organismeNom'] ?? 'Organisme';
-            final dioClient = DioClient(kBaseUrl);
 
             return RapportGenerationScreen(
               missionId: missionId,
               organismeNom: orgNom,
-              repository: RapportRepository(dioClient: dioClient),
+              repository: RapportRepository(dioClient: widget.dioClient),
             );
           },
         ),
@@ -153,4 +184,3 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
     );
   }
 }
-

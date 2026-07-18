@@ -28,4 +28,9 @@ public class ConstatRequest {
     
     /** Optionnel lors de la première saisie, mis à jour par l'upload de fichiers. */
     private String preuveUrl;
+
+    private String criticite;
+    private String preuveDescription;
+    private String recommandation;
+    private String composantesImpactees;
 }

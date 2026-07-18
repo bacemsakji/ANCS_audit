@@ -35,16 +35,14 @@ ai:
   ollama:
     base-url: http://localhost:11434
     model: mistral
+    timeout-seconds: 120
 
 firebase:
   enabled: false   # Désactivé en DEV (pas de vrai service account)
 
 app:
   cors:
-    allowed-origins:
-      - http://localhost:3000
-      - http://localhost:8080
-      - http://10.0.2.2:8080
+    allowed-origins: http://localhost:3000,http://localhost:8080,http://10.0.2.2:8080
 
 logging:
   level:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
@@ -252,9 +253,18 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
                     SecondaryButton(
                       label: 'Télécharger le document',
                       icon: Icons.download_for_offline_outlined,
-                      onPressed: () {
-                        // Action d'ouverture ou d'impression du lien pré-signé
-                        print('Téléchargement depuis : $_downloadUrl');
+                      onPressed: () async {
+                        final uri = Uri.parse(_downloadUrl!);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Impossible d\'ouvrir le lien de téléchargement'),
+                              backgroundColor: AppColors.nonConforme,
+                            ),
+                          );
+                        }
                       },
                     ),
                   ],

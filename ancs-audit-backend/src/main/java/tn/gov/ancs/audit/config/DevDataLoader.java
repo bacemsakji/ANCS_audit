@@ -72,7 +72,7 @@ public class DevDataLoader implements ApplicationRunner {
             "Mohamed Ben Ali",
             "auditeur.demo@ancs.gov.tn",
             // Hash BCrypt(12) de "Auditeur@ANCS2024!"
-            "$2a$12$QoW6t8pU7SiXuGqP4nHHiOF/3PZi0/pDW7z5lR2vZ2X1K9mXQlJGG",
+            "$2a$12$PcYeQmqlPJAClyF64gGMNONadiwaWtaEoObaZg9CvjFIdZBJopXsm",
             Role.AUDITEUR,
             null
         );
@@ -91,7 +91,7 @@ public class DevDataLoader implements ApplicationRunner {
             "Fatima Zahra Trabelsi",
             "rssi.demo@bnt.com.tn",
             // Hash BCrypt(12) de "Rssi@ANCS2024!"
-            "$2a$12$NxZmVoY8pJ3qKlR5tW2HhOKdF6aBXTzP0mWk8sLnQ4uY2vC1jRqI.",
+            "$2a$12$eRC23HjNF04C3FB0YvD0c.Sv0PmKDKGOA08XIh2PqE4308m09ZOra",
             Role.RSSI,
             bnt
         );

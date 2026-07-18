@@ -7,7 +7,7 @@
       Android bloque le trafic HTTP non chiffré par défaut depuis API 28.
     - La section <debug-overrides> permet le HTTP seulement en mode debug (builds locaux).
     - HTTPS est obligatoire pour tout déploiement vers un appareil réel ou un environnement
-      de staging/production (variable --dart-define=API_BASE_URL=https://...).
+      de staging/production (variable dart-define=API_BASE_URL=https://...).
 -->
 <network-security-config>
     <!-- Autoriser HTTP uniquement sur les builds DEBUG pour l'émulateur local -->

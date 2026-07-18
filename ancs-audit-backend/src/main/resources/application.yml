@@ -5,6 +5,8 @@
 # ============================================================
 
 spring:
+  profiles:
+    active: dev
   application:
     name: ancs-audit-backend
 
@@ -70,7 +72,7 @@ ai:
 
   ollama:
     base-url: ${AI_OLLAMA_BASE_URL:http://localhost:11434}
-    model: ${AI_OLLAMA_MODEL:mistral}
+    model: ${AI_OLLAMA_MODEL:qwen2.5-coder:3b}
     timeout-seconds: ${AI_OLLAMA_TIMEOUT_SECONDS:60}
 
   openai:
@@ -98,9 +100,7 @@ firebase:
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
   cors:
-    allowed-origins:
-      - http://localhost:3000
-      - http://localhost:8080
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
 
 # ============================================================
 # Actuator

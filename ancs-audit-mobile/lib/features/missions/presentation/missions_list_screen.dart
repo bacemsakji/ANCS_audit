@@ -6,6 +6,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/shimmer_card.dart';
 import '../data/mission_repository.dart';
+import 'create_mission_screen.dart';
 
 class MissionsListScreen extends StatefulWidget {
   final MissionRepository repository;
@@ -52,8 +53,18 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
     }
   }
 
+  Future<void> _openCreateMission() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreateMissionScreen(repository: widget.repository),
+      ),
+    );
+    if (result == true) _loadMissions(); // refresh list after creation
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isAdmin = widget.userRole == 'ADMIN_ANCS';
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -65,6 +76,15 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
           ),
         ],
       ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _openCreateMission,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Créer une mission'),
+            )
+          : null,
       body: _isLoading
           ? const Padding(
               padding: EdgeInsets.all(AppSpacing.m),
@@ -92,6 +112,8 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
     final String missionId = mission['id'].toString();
     final String status = mission['statut'] ?? 'PLANIFIEE';
     final bool canAudit = widget.userRole == 'AUDITEUR' && status != 'TERMINEE';
+    final bool canGenerateReport = widget.userRole == 'AUDITEUR' && status != 'PLANIFIEE';
+    final bool canViewReport = widget.userRole == 'ADMIN_ANCS' && status != 'PLANIFIEE';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.m),
@@ -151,6 +173,34 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
                     ),
                     icon: const Icon(Icons.playlist_add_check, size: 18),
                     label: const Text('Checklist'),
+                  )
+                else if (canGenerateReport)
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/missions/$missionId/rapport', extra: mission),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.description, size: 18),
+                    label: const Text('Rapport'),
+                  )
+                else if (canViewReport)
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/missions/$missionId/rapport', extra: mission),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.observation,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.visibility, size: 18),
+                    label: const Text('Voir rapport'),
                   )
                 else
                   Text(

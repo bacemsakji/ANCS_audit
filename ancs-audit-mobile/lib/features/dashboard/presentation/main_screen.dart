@@ -40,7 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     // Utiliser la configuration locale de l'émulateur par défaut
-    _dioClient = DioClient('http://10.0.2.2:8080');
+    _dioClient = DioClient();
     _dashboardRepository = DashboardRepository(dioClient: _dioClient);
     _missionRepository = MissionRepository(dioClient: _dioClient);
     _actionRepository = ActionRepository(dioClient: _dioClient);
@@ -61,7 +61,6 @@ class _MainScreenState extends State<MainScreen> {
       // Rôle: AUDITEUR
       return [
         MissionsListScreen(repository: _missionRepository, userRole: role),
-        ActionsListScreen(repository: _actionRepository, userRole: role),
       ];
     }
   }
@@ -104,11 +103,6 @@ class _MainScreenState extends State<MainScreen> {
           icon: const Icon(Icons.assignment_outlined),
           activeIcon: const Icon(Icons.assignment),
           label: missionsLabel,
-        ),
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.playlist_add_check_outlined),
-          activeIcon: const Icon(Icons.playlist_add_check),
-          label: actionsLabel,
         ),
       ];
     }
@@ -182,13 +176,15 @@ class _MainScreenState extends State<MainScreen> {
             index: _selectedIndex,
             children: screens,
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) => setState(() => _selectedIndex = index),
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textSecondary,
-            items: navItems,
-          ),
+          bottomNavigationBar: navItems.length <= 1
+              ? null
+              : BottomNavigationBar(
+                  currentIndex: _selectedIndex,
+                  onTap: (index) => setState(() => _selectedIndex = index),
+                  selectedItemColor: AppColors.primary,
+                  unselectedItemColor: AppColors.textSecondary,
+                  items: navItems,
+                ),
         );
       },
     );

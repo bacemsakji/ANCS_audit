@@ -27,11 +27,19 @@ dependencies:
 
   # --- Stockage local offline (Drift/SQLite) ---
   drift: ^2.18.0
-  sqlite3_flutter_libs: ^0.5.22
+  # sqlite3_flutter_libs fournit les binaires SQLite natifs pour Android, iOS et Windows.
+  # Sans cette dépendance, NativeDatabase ne peut pas s'initialiser sur mobile.
+  sqlite3_flutter_libs: ^0.5.24
+  # path_provider résout le chemin du répertoire de documents de l'application sur
+  # chaque plateforme native (getApplicationDocumentsDirectory).
+  path_provider: ^2.1.4
+  # path fournit p.join() pour construire des chemins de fichiers cross-platform.
+  path: ^1.9.0
   shared_preferences: ^2.2.3
+  image_picker: ^1.1.2
 
   # --- Internationalisation ---
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # --- Interface utilisateur & Design system ---
   # google_fonts gère le téléchargement des polices Inter et Noto dynamiquement —
@@ -48,6 +56,10 @@ dev_dependencies:
   # --- Générateurs de code ---
   drift_dev: ^2.18.0
   build_runner: ^2.4.11
+  
+  # --- Testing ---
+  mockito: ^5.4.4
+  mocktail: ^1.0.2
 
 flutter:
   uses-material-design: true

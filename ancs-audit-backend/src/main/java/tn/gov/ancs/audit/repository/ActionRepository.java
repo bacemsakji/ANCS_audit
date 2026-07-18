@@ -19,7 +19,6 @@ public interface ActionRepository extends JpaRepository<Action, UUID> {
 
     List<Action> findByConstatId(UUID constatId);
 
-    /** Toutes les actions d'une mission via les constats associés. */
     @Query("""
         SELECT a FROM Action a
         JOIN a.constat c
@@ -27,6 +26,14 @@ public interface ActionRepository extends JpaRepository<Action, UUID> {
         ORDER BY a.priorite DESC, a.echeance ASC
         """)
     Page<Action> findByMissionId(UUID missionId, Pageable pageable);
+
+    @Query("""
+        SELECT a FROM Action a
+        JOIN a.constat c
+        WHERE c.mission.id = :missionId
+        ORDER BY a.priorite DESC, a.echeance ASC
+        """)
+    List<Action> findActionsByMissionId(@org.springframework.data.repository.query.Param("missionId") UUID missionId);
 
     /**
      * Actions pour le dashboard RSSI — filtrées par organisme via la chaîne

@@ -3,8 +3,10 @@ package tn.gov.ancs.audit.domain;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import tn.gov.ancs.audit.domain.enums.StatutSoumissionAncs;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 /**
  * Rapport d'audit officiel généré au format PDF et/ou DOCX.
@@ -50,6 +52,57 @@ public class Rapport extends BaseEntity {
     /** Format du fichier généré : {@code PDF} ou {@code DOCX}. */
     @Column(name = "type", length = 10)
     private String type;
+
+    @Column(name = "nom_auditeur", length = 255)
+    private String nomAuditeur;
+
+    @Column(name = "numero_certification_ancs", length = 100)
+    private String numeroCertificationAncs;
+
+    @Column(name = "contact_auditeur", length = 255)
+    private String contactAuditeur;
+
+    @Column(name = "texte_confidentialite", columnDefinition = "TEXT")
+    private String texteConfidentialite;
+
+    @Column(name = "historique_versions", columnDefinition = "TEXT")
+    private String historiqueVersions;
+
+    // -------------------------------------------------------
+    // Processus de soumission officielle à l'ANCS
+    // (décret 2004-1250 + décret-loi 2023-17)
+    // -------------------------------------------------------
+
+    /**
+     * Statut de la soumission du rapport à l'ANCS.
+     * Cycle : NON_SOUMIS → SOUMIS → ACCEPTE | REJETE.
+     */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut_soumission_ancs", length = 20, nullable = false)
+    private StatutSoumissionAncs statutSoumissionAncs = StatutSoumissionAncs.NON_SOUMIS;
+
+    /**
+     * Date de transmission effective du rapport à l'ANCS.
+     * Doit intervenir dans les 10 jours suivant la fin de la mission.
+     */
+    @Column(name = "date_soumission_ancs")
+    private Instant dateSoumissionAncs;
+
+    /**
+     * Motif de rejet communiqué par l'ANCS.
+     * Renseigné uniquement si {@code statutSoumissionAncs == REJETE}.
+     */
+    @Column(name = "motif_rejet", columnDefinition = "TEXT")
+    private String motifRejet;
+
+    /**
+     * Date limite de resoumission après rejet par l'ANCS.
+     * L'organisme dispose de 2 mois pour refaire l'audit.
+     * Calculée automatiquement : {@code dateSoumissionAncs + 2 mois}.
+     */
+    @Column(name = "date_limite_resoumission")
+    private LocalDate dateLimiteResoumission;
 
     // -------------------------------------------------------
     // Traçabilité de la génération IA (module synthèse)

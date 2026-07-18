@@ -46,6 +46,22 @@ import org.springframework.test.context.TestPropertySource;
 })
 class AuditApplicationTests {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    @Test
+    void testPasswords() {
+        System.out.println("======================================");
+        System.out.println("ADMIN MATCH: " + passwordEncoder.matches("Admin@ANCS2024!", "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewFqVExL1sRl2qzu"));
+        System.out.println("AUDITEUR MATCH: " + passwordEncoder.matches("Auditeur@ANCS2024!", "$2a$12$QoW6t8pU7SiXuGqP4nHHiOF/3PZi0/pDW7z5lR2vZ2X1K9mXQlJGG"));
+        System.out.println("RSSI MATCH: " + passwordEncoder.matches("Rssi@ANCS2024!", "$2a$12$NxZmVoY8pJ3qKlR5tW2HhOKdF6aBXTzP0mWk8sLnQ4uY2vC1jRqI."));
+        System.out.println("--------------------------------------");
+        System.out.println("NEW ADMIN HASH: " + passwordEncoder.encode("Admin@ANCS2024!"));
+        System.out.println("NEW AUDITEUR HASH: " + passwordEncoder.encode("Auditeur@ANCS2024!"));
+        System.out.println("NEW RSSI HASH: " + passwordEncoder.encode("Rssi@ANCS2024!"));
+        System.out.println("======================================");
+    }
+
     @Test
     void contextLoads() {
         // Vérifie que le contexte Spring démarre sans erreur
