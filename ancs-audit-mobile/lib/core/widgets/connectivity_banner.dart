@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 
 /// Bannière de statut connectivité affichée en haut de l'écran
@@ -7,7 +6,8 @@ import '../constants/app_spacing.dart';
 class ConnectivityBanner extends StatelessWidget {
   final bool isOnline;
 
-  const ConnectivityBanner({Key? key, required this.isOnline}) : super(key: key);
+  const ConnectivityBanner({Key? key, required this.isOnline})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +28,9 @@ class ConnectivityBanner extends StatelessWidget {
           Text(
             'Mode hors-ligne — données sauvegardées localement',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
         ],
       ),

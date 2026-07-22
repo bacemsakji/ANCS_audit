@@ -52,7 +52,7 @@ public class AiPromptBuilder {
         
         sb.append("Liste des constats d'audit significatifs à analyser :\n");
         if (request.getConstats() == null || request.getConstats().isEmpty()) {
-            sb.append("- Aucun constat significatif enregistré. Tout est conforme.");
+            sb.append("- Aucun constat n'a été saisi — l'audit n'a pas encore été réalisé ou est incomplet.");
         } else {
             for (AiSummaryRequest.ConstatInfo c : request.getConstats()) {
                 sb.append(String.format("- [%s] %s : %s", 

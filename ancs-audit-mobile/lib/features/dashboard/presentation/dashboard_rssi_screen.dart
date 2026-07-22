@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
@@ -52,6 +53,8 @@ class _DashboardRssiScreenState extends State<DashboardRssiScreen> {
                 children: [
                   _buildScoreCard(),
                   const SizedBox(height: AppSpacing.m),
+                  _buildRapportCard(),
+                  const SizedBox(height: AppSpacing.m),
                   _buildActionsStats(),
                   const SizedBox(height: AppSpacing.m),
                   _buildActionsUrgentes(),
@@ -80,6 +83,69 @@ class _DashboardRssiScreenState extends State<DashboardRssiScreen> {
           Text(
             '${_data!['totalMissionsRealisees'] ?? 0} mission(s) réalisée(s)',
             style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRapportCard() {
+    final organismeNom = _data?['organismeNom'] as String? ?? 'Mon organisme';
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.picture_as_pdf_outlined,
+                    color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rapport d\'audit ANCS',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      'Consultez et téléchargez les rapports générés par votre auditeur.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.m),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.go(
+                '/rapport/organisme',
+                extra: {'organismeNom': organismeNom},
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.folder_open_outlined, size: 20),
+              label: const Text(
+                'Voir le rapport d\'audit',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),

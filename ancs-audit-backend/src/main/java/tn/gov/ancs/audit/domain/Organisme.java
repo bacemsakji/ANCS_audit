@@ -49,4 +49,19 @@ public class Organisme extends BaseEntity {
     @Size(max = 255)
     @Column(name = "contact_rssi_email")
     private String contactRssiEmail;
+
+    /** Acronyme de l'organisme */
+    @Size(max = 50)
+    @Column(name = "acronyme")
+    private String acronyme;
+
+    /** Statut juridique/opérationnel (ex: Public, Privé) */
+    @Size(max = 20)
+    @Column(name = "statut")
+    private String statut;
+
+    /** Catégorie d'organisme (ex: OIV, administration, etc.) */
+    @Size(max = 100)
+    @Column(name = "categorie")
+    private String categorie;
 }

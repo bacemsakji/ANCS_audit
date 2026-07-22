@@ -23,6 +23,9 @@ import java.time.LocalDate;
     name = "rapport",
     indexes = {
         @Index(name = "idx_rapport_mission", columnList = "mission_id")
+    },
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_rapport_mission_version", columnNames = {"mission_id", "version"})
     }
 )
 @Getter

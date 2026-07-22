@@ -8,7 +8,8 @@ import '../data/dashboard_repository.dart';
 
 class DashboardAdminScreen extends StatefulWidget {
   final DashboardRepository repository;
-  const DashboardAdminScreen({Key? key, required this.repository}) : super(key: key);
+  const DashboardAdminScreen({Key? key, required this.repository})
+      : super(key: key);
 
   @override
   State<DashboardAdminScreen> createState() => _DashboardAdminScreenState();
@@ -26,12 +27,21 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final data = await widget.repository.getAdminDashboard();
-      setState(() { _data = data; _isLoading = false; });
+      setState(() {
+        _data = data;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); _isLoading = false; });
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -114,7 +124,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Conformité globale', style: Theme.of(context).textTheme.titleMedium),
+          Text('Conformité globale',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.m),
           ConformiteGauge(tauxConformite: taux),
         ],
@@ -126,10 +137,11 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     final count = _data!['alertesCertificationExpiration'] as int? ?? 0;
     if (count == 0) return const SizedBox.shrink();
     return AppCard(
-      color: AppColors.nonConforme.withOpacity(0.05),
+      color: AppColors.nonConforme.withValues(alpha: 0.05),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.nonConforme, size: 28),
+          const Icon(Icons.warning_amber_rounded,
+              color: AppColors.nonConforme, size: 28),
           const SizedBox(width: AppSpacing.m),
           Expanded(
             child: Column(
@@ -138,8 +150,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                 Text(
                   'Alertes de certification',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.nonConforme,
-                  ),
+                        color: AppColors.nonConforme,
+                      ),
                 ),
                 Text(
                   '$count auditeur(s) avec certification expirant dans 30 jours',
@@ -160,9 +172,11 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Missions récentes', style: Theme.of(context).textTheme.titleMedium),
+          Text('Missions récentes',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.m),
-          ...missions.map((m) => _MissionTile(mission: m as Map<String, dynamic>)),
+          ...missions
+              .map((m) => _MissionTile(mission: m as Map<String, dynamic>)),
         ],
       ),
     );
@@ -172,9 +186,11 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off, size: 48, color: AppColors.textSecondary),
+            const Icon(Icons.cloud_off,
+                size: 48, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.m),
-            Text('Données non disponibles', style: Theme.of(context).textTheme.titleMedium),
+            Text('Données non disponibles',
+                style: Theme.of(context).textTheme.titleMedium),
             TextButton(onPressed: _load, child: const Text('Réessayer')),
           ],
         ),
@@ -245,7 +261,10 @@ class _MissionTile extends StatelessWidget {
               children: [
                 Text(
                   mission['organismeNom'] ?? '-',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

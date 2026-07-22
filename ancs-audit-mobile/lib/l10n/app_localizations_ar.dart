@@ -268,4 +268,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get validateAndInsertButton => 'اعتماد وإدراج في التقرير';
+
+  @override
+  String get loginAgency => 'الوكالة الوطنية للسلامة السيبرانية';
+
+  @override
+  String get requiredField => 'حقل مطلوب';
+
+  @override
+  String get invalidEmail => 'بريد إلكتروني غير صالح';
+
+  @override
+  String get mfaNotice =>
+      'يجب على مسؤولي الوكالة إكمال التحقق الثنائي قبل الوصول إلى بوابة التدقيق.';
 }

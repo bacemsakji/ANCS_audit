@@ -19,4 +19,7 @@ public class OrganismeResponse {
     private String typeObligationAudit;
     private String adresse;
     private String contactRssiEmail;
+    private String acronyme;
+    private String statut;
+    private String categorie;
 }

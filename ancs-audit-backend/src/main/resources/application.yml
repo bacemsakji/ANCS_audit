@@ -10,6 +10,9 @@ spring:
   application:
     name: ancs-audit-backend
 
+server:
+  port: ${PORT:8081}
+
   # --- Jackson JSON ---
   jackson:
     default-property-inclusion: non_null
@@ -67,7 +70,7 @@ minio:
 # IA — Synthèse exécutive assistée
 # ============================================================
 ai:
-  # Provider actif : ollama (défaut, on-prem) | openai | anthropic
+  # Provider actif : ollama (défaut, on-prem) | openai
   provider: ${AI_PROVIDER:ollama}
 
   ollama:

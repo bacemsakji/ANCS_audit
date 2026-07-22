@@ -1,6 +1,5 @@
 import 'dart:developer' as developer;
 import 'package:dio/dio.dart' as dio;
-import 'package:flutter/foundation.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/local_db/app_database.dart';
 import 'package:drift/drift.dart';
@@ -14,7 +13,8 @@ class ConstatRepository {
         _db = db;
 
   Future<List<dynamic>> getConstatsByMission(String missionId) async {
-    final response = await _dioClient.instance.get('/api/constats/mission/$missionId');
+    final response =
+        await _dioClient.instance.get('/api/constats/mission/$missionId');
     return response.data as List<dynamic>;
   }
 
@@ -46,7 +46,8 @@ class ConstatRepository {
           );
           preuveUrl = response.data['preuveUrl'];
         } catch (e) {
-          developer.log("Erreur lors de l'upload de la preuve: $e", name: 'ConstatRepository', error: e);
+          developer.log("Erreur lors de l'upload de la preuve: $e",
+              name: 'ConstatRepository', error: e);
           // Continuer sans la preuve en cas d'erreur
         }
       }
@@ -60,25 +61,27 @@ class ConstatRepository {
         if (criticite != null) 'criticite': criticite,
         if (preuveDescription != null) 'preuveDescription': preuveDescription,
         if (recommandation != null) 'recommandation': recommandation,
-        if (composantesImpactees != null) 'composantesImpactees': composantesImpactees,
+        if (composantesImpactees != null)
+          'composantesImpactees': composantesImpactees,
       });
     } else {
       // Stockage local en attente de synchronisation
       await _db.into(_db.localConstatTable).insertOnConflictUpdate(
-        LocalConstatTableCompanion(
-          id: Value(id),
-          missionId: Value(missionId),
-          controleId: Value(controleId),
-          resultat: Value(resultat),
-          commentaire: Value(commentaire),
-          preuveUrl: Value(imagePath), // Stocker le chemin local temporairement
-          criticite: Value(criticite),
-          preuveDescription: Value(preuveDescription),
-          recommandation: Value(recommandation),
-          composantesImpactees: Value(composantesImpactees),
-          synced: const Value(false),
-        ),
-      );
+            LocalConstatTableCompanion(
+              id: Value(id),
+              missionId: Value(missionId),
+              controleId: Value(controleId),
+              resultat: Value(resultat),
+              commentaire: Value(commentaire),
+              preuveUrl:
+                  Value(imagePath), // Stocker le chemin local temporairement
+              criticite: Value(criticite),
+              preuveDescription: Value(preuveDescription),
+              recommandation: Value(recommandation),
+              composantesImpactees: Value(composantesImpactees),
+              synced: const Value(false),
+            ),
+          );
     }
   }
 
@@ -87,4 +90,3 @@ class ConstatRepository {
   // également l'upload multipart des preuves avant l'envoi des métadonnées.
   // Ne pas dupliquer cette logique ici.
 }
-

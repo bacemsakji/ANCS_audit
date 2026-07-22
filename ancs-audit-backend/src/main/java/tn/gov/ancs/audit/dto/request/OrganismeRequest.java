@@ -29,4 +29,13 @@ public class OrganismeRequest {
     @Email(message = "L'adresse e-mail doit être valide")
     @Size(max = 255)
     private String contactRssiEmail;
+
+    @Size(max = 50)
+    private String acronyme;
+
+    @Size(max = 20)
+    private String statut;
+
+    @Size(max = 100)
+    private String categorie;
 }

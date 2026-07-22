@@ -7,12 +7,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import tn.gov.ancs.audit.domain.Rapport;
 import tn.gov.ancs.audit.domain.Utilisateur;
+import tn.gov.ancs.audit.dto.response.RapportResponse;
 import tn.gov.ancs.audit.dto.response.SyntheseIaResponse;
 import tn.gov.ancs.audit.exception.ResourceNotFoundException;
 import tn.gov.ancs.audit.repository.UtilisateurRepository;
 import tn.gov.ancs.audit.service.RapportService;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import tn.gov.ancs.audit.domain.enums.Role;
@@ -51,7 +53,7 @@ public class RapportController {
             @RequestParam("type") String type,
             @RequestBody Map<String, Object> requestBody,
             org.springframework.security.core.Authentication authentication) {
-        
+
         String synthese = (String) requestBody.get("syntheseExecutive");
         Boolean isIa = (Boolean) requestBody.getOrDefault("isIaGenerated", false);
 
@@ -74,7 +76,7 @@ public class RapportController {
     public ResponseEntity<Map<String, String>> downloadRapport(
             @PathVariable("id") UUID id,
             Authentication authentication) {
-        
+
         Utilisateur user = utilisateurRepository.findByEmailIgnoreCase(authentication.getName())
             .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecté non trouvé"));
 
@@ -88,6 +90,30 @@ public class RapportController {
         response.put("downloadUrl", downloadUrl);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Liste tous les rapports d'une mission donnée (toutes versions).
+     * Rôle requis : AUDITEUR (assigné) ou ADMIN_ANCS.
+     */
+    @GetMapping("/missions/{missionId}")
+    @PreAuthorize("hasAnyRole('ADMIN_ANCS', 'AUDITEUR')")
+    public ResponseEntity<List<RapportResponse>> getRapportsByMission(
+            @PathVariable("missionId") UUID missionId,
+            Authentication authentication) {
+        List<RapportResponse> rapports = rapportService.getRapportsByMission(missionId, authentication.getName());
+        return ResponseEntity.ok(rapports);
+    }
+
+    /**
+     * Liste tous les rapports appartenant à l'organisme du RSSI connecté.
+     * Rôle requis : RSSI ou ADMIN_ANCS.
+     */
+    @GetMapping("/mon-organisme")
+    @PreAuthorize("hasAnyRole('RSSI', 'ADMIN_ANCS')")
+    public ResponseEntity<List<RapportResponse>> getMyOrganismeRapports(Authentication authentication) {
+        List<RapportResponse> rapports = rapportService.getMyOrganismeRapports(authentication.getName());
+        return ResponseEntity.ok(rapports);
     }
 
     @PostMapping("/{id}/soumettre")
@@ -125,6 +151,9 @@ public class RapportController {
             @PathVariable("id") UUID id,
             @RequestBody Map<String, String> requestBody) {
         String motifRejet = requestBody.get("motifRejet");
+        if (motifRejet == null || motifRejet.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le motif de rejet est obligatoire.");
+        }
         Rapport rapport = rapportService.rejectRapport(id, motifRejet);
 
         Map<String, Object> response = new HashMap<>();

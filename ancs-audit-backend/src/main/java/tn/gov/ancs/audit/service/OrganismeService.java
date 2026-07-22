@@ -37,6 +37,9 @@ public class OrganismeService {
             .typeObligationAudit(request.getTypeObligationAudit())
             .adresse(request.getAdresse())
             .contactRssiEmail(request.getContactRssiEmail())
+            .acronyme(request.getAcronyme())
+            .statut(request.getStatut())
+            .categorie(request.getCategorie())
             .build();
 
         Organisme saved = organismeRepository.save(organisme);
@@ -74,6 +77,9 @@ public class OrganismeService {
             .typeObligationAudit(org.getTypeObligationAudit())
             .adresse(org.getAdresse())
             .contactRssiEmail(org.getContactRssiEmail())
+            .acronyme(org.getAcronyme())
+            .statut(org.getStatut())
+            .categorie(org.getCategorie())
             .build();
     }
 }

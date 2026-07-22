@@ -112,8 +112,10 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
     final String missionId = mission['id'].toString();
     final String status = mission['statut'] ?? 'PLANIFIEE';
     final bool canAudit = widget.userRole == 'AUDITEUR' && status != 'TERMINEE';
-    final bool canGenerateReport = widget.userRole == 'AUDITEUR' && status != 'PLANIFIEE';
-    final bool canViewReport = widget.userRole == 'ADMIN_ANCS' && status != 'PLANIFIEE';
+    // Rapport visible for auditor any time it's not PLANIFIEE
+    final bool canSeeRapport =
+        (widget.userRole == 'AUDITEUR' || widget.userRole == 'ADMIN_ANCS') &&
+        status != 'PLANIFIEE';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.m),
@@ -174,7 +176,7 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
                     icon: const Icon(Icons.playlist_add_check, size: 18),
                     label: const Text('Checklist'),
                   )
-                else if (canGenerateReport)
+                else if (canSeeRapport)
                   ElevatedButton.icon(
                     onPressed: () => context.push('/missions/$missionId/rapport', extra: mission),
                     style: ElevatedButton.styleFrom(
@@ -185,22 +187,8 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    icon: const Icon(Icons.description, size: 18),
+                    icon: const Icon(Icons.description_outlined, size: 18),
                     label: const Text('Rapport'),
-                  )
-                else if (canViewReport)
-                  ElevatedButton.icon(
-                    onPressed: () => context.push('/missions/$missionId/rapport', extra: mission),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.observation,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(Icons.visibility, size: 18),
-                    label: const Text('Voir rapport'),
                   )
                 else
                   Text(

@@ -86,5 +86,9 @@
   "generateIaSummaryButton": "Générer un brouillon (IA)",
   "iaDraftBadge": "Généré par IA — à relire",
   "iaOfflineError": "Fonction IA indisponible hors-ligne",
-  "validateAndInsertButton": "Valider et insérer dans le rapport"
+  "validateAndInsertButton": "Valider et insérer dans le rapport",
+  "loginAgency": "Agence Nationale de Cybersécurité",
+  "requiredField": "Champ obligatoire",
+  "invalidEmail": "Adresse e-mail invalide",
+  "mfaNotice": "Les administrateurs ANCS doivent compléter la vérification à deux facteurs avant d'accéder au portail d'audit."
 }

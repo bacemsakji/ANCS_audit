@@ -80,7 +80,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
       initialDate: isStart
           ? (_dateDebut ?? now)
           : (_dateFin ?? (_dateDebut ?? now).add(const Duration(days: 30))),
-      firstDate: isStart ? now.subtract(const Duration(days: 365)) : (_dateDebut ?? now),
+      firstDate: isStart
+          ? now.subtract(const Duration(days: 365))
+          : (_dateDebut ?? now),
       lastDate: now.add(const Duration(days: 730)),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
@@ -105,7 +107,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedOrganismeId == null || _selectedAuditeurId == null || _selectedReferentielId == null) {
+    if (_selectedOrganismeId == null ||
+        _selectedAuditeurId == null ||
+        _selectedReferentielId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Veuillez renseigner tous les champs obligatoires.'),
@@ -182,11 +186,13 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off, size: 48, color: AppColors.textSecondary),
+            const Icon(Icons.cloud_off,
+                size: 48, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.m),
             Text(_loadError!, textAlign: TextAlign.center),
             const SizedBox(height: AppSpacing.m),
-            ElevatedButton(onPressed: _loadFormData, child: const Text('Réessayer')),
+            ElevatedButton(
+                onPressed: _loadFormData, child: const Text('Réessayer')),
           ],
         ),
       ),
@@ -210,45 +216,50 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                 final nom = o['nom']?.toString() ?? id;
                 return DropdownMenuItem(value: id, child: Text(nom));
               }).toList(),
-              onChanged: (v) => setState(() => _selectedOrganismeId = v as String?),
+              onChanged: (v) =>
+                  setState(() => _selectedOrganismeId = v as String?),
               validator: (v) => v == null ? 'Champ obligatoire' : null,
             ),
             const SizedBox(height: AppSpacing.m),
-
             _sectionTitle('Auditeur assigné *'),
             _buildDropdown(
               hint: 'Sélectionner l\'auditeur',
               value: _selectedAuditeurId,
               items: _auditeurs.map((a) {
                 final id = a['id'].toString();
-                final nom = a['nom']?.toString() ?? a['utilisateurNom']?.toString() ?? id;
+                final nom = a['nom']?.toString() ??
+                    a['utilisateurNom']?.toString() ??
+                    id;
                 return DropdownMenuItem(value: id, child: Text(nom));
               }).toList(),
-              onChanged: (v) => setState(() => _selectedAuditeurId = v as String?),
+              onChanged: (v) =>
+                  setState(() => _selectedAuditeurId = v as String?),
               validator: (v) => v == null ? 'Champ obligatoire' : null,
             ),
             const SizedBox(height: AppSpacing.m),
-
             _sectionTitle('Référentiel applicable *'),
             _buildDropdown(
               hint: 'Sélectionner le référentiel',
               value: _selectedReferentielId,
-              items: _referentiels.map((r) {
+              items: _referentiels
+                  .where((r) => r['type'] == 'CONTROLE_TECHNIQUE')
+                  .map((r) {
                 final id = r['id'].toString();
                 final nom = r['nom']?.toString() ?? id;
                 return DropdownMenuItem(value: id, child: Text(nom));
               }).toList(),
-              onChanged: (v) => setState(() => _selectedReferentielId = v as String?),
+              onChanged: (v) =>
+                  setState(() => _selectedReferentielId = v as String?),
               validator: (v) => v == null ? 'Champ obligatoire' : null,
             ),
             const SizedBox(height: AppSpacing.m),
-
             _sectionTitle('Périmètre audité'),
             TextFormField(
               controller: _perimetreController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: 'Ex: Datacenter, Applications métier, Réseau interne…',
+                hintText:
+                    'Ex: Datacenter, Applications métier, Réseau interne…',
                 filled: true,
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
@@ -257,22 +268,25 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 2),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.m),
-
             _sectionTitle('Période de la mission'),
             Row(
               children: [
-                Expanded(child: _buildDateButton('Début', _dateDebut, () => _pickDate(true))),
+                Expanded(
+                    child: _buildDateButton(
+                        'Début', _dateDebut, () => _pickDate(true))),
                 const SizedBox(width: AppSpacing.m),
-                Expanded(child: _buildDateButton('Fin', _dateFin, () => _pickDate(false))),
+                Expanded(
+                    child: _buildDateButton(
+                        'Fin', _dateFin, () => _pickDate(false))),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
-
             PrimaryButton(
               label: 'Créer la mission',
               icon: Icons.add_task,
@@ -308,7 +322,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     required FormFieldValidator<String?> validator,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       items: items,
       onChanged: onChanged,
       validator: validator,
@@ -317,7 +331,8 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         hintText: hint,
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.divider),
@@ -347,19 +362,25 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.primary),
+            const Icon(Icons.calendar_today_outlined,
+                size: 16, color: AppColors.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 10, color: AppColors.textSecondary)),
                   Text(
                     text,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: date != null ? FontWeight.w600 : FontWeight.normal,
-                      color: date != null ? AppColors.primary : AppColors.textSecondary,
+                      fontWeight:
+                          date != null ? FontWeight.w600 : FontWeight.normal,
+                      color: date != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],

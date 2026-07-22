@@ -88,6 +88,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(details, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorDetails> handleDataIntegrityViolationException(org.springframework.dao.DataIntegrityViolationException ex, WebRequest request) {
+        log.warn("Violation d'intégrité des données: {}", ex.getMessage());
+        return buildResponse(
+            HttpStatus.CONFLICT,
+            "Conflict",
+            "Un rapport est déjà en cours de génération pour cette mission, veuillez réessayer dans quelques secondes.",
+            request
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDetails> handleGlobalException(Exception ex, WebRequest request) {
         log.error("Exception non gérée survenue lors de l'appel à l'API", ex);

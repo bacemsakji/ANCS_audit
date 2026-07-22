@@ -8,7 +8,8 @@ import '../data/action_repository.dart';
 
 class ActionsListScreen extends StatefulWidget {
   final ActionRepository repository;
-  final String? missionId; // Optionnel : si null, charge le dashboard RSSI général
+  final String?
+      missionId; // Optionnel : si null, charge le dashboard RSSI général
   final String userRole;
 
   const ActionsListScreen({
@@ -89,8 +90,8 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.missionId != null 
-        ? 'Actions correctives de la mission' 
+    final title = widget.missionId != null
+        ? 'Actions correctives de la mission'
         : 'Mes Actions Correctives (RSSI)';
 
     return Scaffold(
@@ -116,7 +117,8 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
                         padding: const EdgeInsets.all(AppSpacing.m),
                         itemCount: _actions.length,
                         itemBuilder: (context, index) {
-                          final action = _actions[index] as Map<String, dynamic>;
+                          final action =
+                              _actions[index] as Map<String, dynamic>;
                           return _buildActionCard(action);
                         },
                       ),
@@ -146,7 +148,10 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
             const SizedBox(height: AppSpacing.s),
             Text(
               action['description'] ?? '-',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w500),
             ),
             const Divider(height: AppSpacing.l),
             Row(
@@ -155,8 +160,11 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Responsable : ${action['responsable'] ?? 'Non assigné'}', style: Theme.of(context).textTheme.bodySmall),
-                    Text('Échéance : ${action['echeance'] ?? 'N/A'}', style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                        'Responsable : ${action['responsable'] ?? 'Non assigné'}',
+                        style: Theme.of(context).textTheme.bodySmall),
+                    Text('Échéance : ${action['echeance'] ?? 'N/A'}',
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
                 if (canModify)
@@ -165,7 +173,8 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryLight,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                     ),
                     child: Text(statut == 'A_FAIRE' ? 'Commencer' : 'Clôturer'),
                   ),
@@ -196,7 +205,8 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle_outline, size: 48, color: AppColors.conforme),
+          const Icon(Icons.check_circle_outline,
+              size: 48, color: AppColors.conforme),
           const SizedBox(height: AppSpacing.m),
           Text(
             'Aucune action corrective planifiée',
@@ -235,12 +245,13 @@ class _PriorityBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }

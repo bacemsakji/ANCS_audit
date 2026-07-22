@@ -128,21 +128,11 @@
       <version>${firebase.version}</version>
     </dependency>
 
-    <!-- iText 8 (generation PDF) -->
+    <!-- docx-stamper pour la génération des rapports basés sur le modèle Word -->
     <dependency>
-      <groupId>com.itextpdf</groupId>
-      <artifactId>kernel</artifactId>
-      <version>${itext.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.itextpdf</groupId>
-      <artifactId>layout</artifactId>
-      <version>${itext.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.itextpdf</groupId>
-      <artifactId>io</artifactId>
-      <version>${itext.version}</version>
+      <groupId>pro.verron</groupId>
+      <artifactId>docx-stamper</artifactId>
+      <version>1.6.9</version>
     </dependency>
 
     <!-- Apache POI (generation DOCX) -->

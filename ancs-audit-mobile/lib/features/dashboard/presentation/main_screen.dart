@@ -66,7 +66,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   List<BottomNavigationBarItem> _buildNavItems(String role) {
-    final String homeLabel = widget.isArabic ? 'لوحة التحكم' : 'Tableau de bord';
+    final String homeLabel =
+        widget.isArabic ? 'لوحة التحكم' : 'Tableau de bord';
     final String missionsLabel = widget.isArabic ? 'المهمات' : 'Missions';
     final String actionsLabel = widget.isArabic ? 'الإجراءات' : 'Actions';
 
@@ -128,7 +129,8 @@ class _MainScreenState extends State<MainScreen> {
         }
 
         final String userRoleText = switch (role) {
-          'ADMIN_ANCS' => widget.isArabic ? 'مدير الوكالة' : 'Administrateur ANCS',
+          'ADMIN_ANCS' =>
+            widget.isArabic ? 'مدير الوكالة' : 'Administrateur ANCS',
           'RSSI' => widget.isArabic ? 'مسؤول السلامة' : 'RSSI',
           _ => widget.isArabic ? 'مدقق معتمد' : 'Auditeur ANCS',
         };
@@ -145,12 +147,17 @@ class _MainScreenState extends State<MainScreen> {
                     children: [
                       Text(
                         userNom,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         userRoleText,
-                        style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.8)),
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white.withValues(alpha: 0.8)),
                       ),
                     ],
                   ),

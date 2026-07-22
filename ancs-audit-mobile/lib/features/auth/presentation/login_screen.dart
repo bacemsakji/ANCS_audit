@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_buttons.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -69,19 +70,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
                   child: Column(
                     children: [
-                      // Logo ANCS (placeholder)
-                      Container(
+                      Image.asset(
+                        'assets/images/logo--ancs.png',
                         width: 72,
                         height: 72,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.security,
-                          color: Colors.white,
-                          size: 40,
-                        ),
                       ),
                       const SizedBox(height: AppSpacing.m),
                       const Text(
@@ -96,31 +88,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Agence Nationale de Cybersécurité',
+                        AppLocalizations.of(context)!.loginAgency,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 13,
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.s,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Plateforme Officielle d\'Audit SI',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.75),
-                            fontSize: 11,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.s,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            AppLocalizations.of(context)!.loginTitle,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 11,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -133,9 +125,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   decoration: const BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(28),
-                      topRight: Radius.circular(28),
+                    borderRadius: BorderRadiusDirectional.only(
+                      topStart: Radius.circular(28),
+                      topEnd: Radius.circular(28),
                     ),
                   ),
                   padding: const EdgeInsets.all(AppSpacing.l),
@@ -145,24 +137,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Connexion',
+                          AppLocalizations.of(context)!.login,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Décret-loi n° 2023-17 relatif à la cybersécurité',
+                          AppLocalizations.of(context)!.loginSubtitle,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: AppSpacing.l),
 
                         AppTextField(
                           controller: _emailController,
-                          label: 'Adresse e-mail',
+                          label: AppLocalizations.of(context)!.emailLabel,
                           keyboardType: TextInputType.emailAddress,
                           prefixIcon: const Icon(Icons.email_outlined, size: 20),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Champ obligatoire';
-                            if (!v.contains('@')) return 'Adresse e-mail invalide';
+                            if (v == null || v.isEmpty) return AppLocalizations.of(context)!.requiredField;
+                            if (!v.contains('@')) return AppLocalizations.of(context)!.invalidEmail;
                             return null;
                           },
                         ),
@@ -170,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         AppTextField(
                           controller: _passwordController,
-                          label: 'Mot de passe',
+                          label: AppLocalizations.of(context)!.passwordLabel,
                           obscureText: _obscurePassword,
                           prefixIcon: const Icon(Icons.lock_outline, size: 20),
                           suffixIcon: IconButton(
@@ -184,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 setState(() => _obscurePassword = !_obscurePassword),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Champ obligatoire';
+                            if (v == null || v.isEmpty) return AppLocalizations.of(context)!.requiredField;
                             return null;
                           },
                         ),
@@ -192,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         BlocBuilder<AuthBloc, AuthState>(
                           builder: (context, state) => PrimaryButton(
-                            label: 'Se connecter',
+                            label: AppLocalizations.of(context)!.loginButton,
                             isLoading: state is AuthLoading,
                             onPressed: _submit,
                           ),
@@ -203,9 +195,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         Container(
                           padding: const EdgeInsets.all(AppSpacing.m),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.05),
+                            color: AppColors.primary.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(AppSpacing.borderRadiusM),
-                            border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(width: AppSpacing.s),
                               Expanded(
                                 child: Text(
-                                  'Les administrateurs ANCS doivent compléter la vérification à deux facteurs (2FA) pour accéder à la plateforme.',
+                                  AppLocalizations.of(context)!.mfaNotice,
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ),

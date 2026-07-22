@@ -24,6 +24,9 @@ LABEL maintainer="ANCS — Agence Nationale de Cybersécurité <contact@ancs.gov
 LABEL version="1.0.0"
 LABEL description="ANCS Security Audit Platform — Backend API"
 
+# Install LibreOffice for PDF generation
+RUN apk add --no-cache libreoffice font-droid-nonlatin font-droid ttf-dejavu ttf-freefont ttf-liberation
+
 # Utilisateur non-root pour la sécurité
 RUN addgroup -S ancs && adduser -S ancs -G ancs
 

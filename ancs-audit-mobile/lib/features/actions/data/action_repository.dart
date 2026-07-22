@@ -1,17 +1,18 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/dio_client.dart';
 
 class ActionRepository {
   final DioClient _dioClient;
   ActionRepository({required DioClient dioClient}) : _dioClient = dioClient;
 
-  Future<List<dynamic>> getActionsForMission(String missionId, {int page = 0}) async {
+  Future<List<dynamic>> getActionsForMission(String missionId,
+      {int page = 0}) async {
     final response = await _dioClient.instance.get(
       '/api/actions/mission/$missionId',
       queryParameters: {'page': page, 'size': 50},
     );
     final data = response.data;
-    if (data is Map && data.containsKey('content')) return data['content'] as List<dynamic>;
+    if (data is Map && data.containsKey('content'))
+      return data['content'] as List<dynamic>;
     return data is List ? data : [];
   }
 

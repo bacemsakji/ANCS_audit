@@ -621,6 +621,30 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Valider et insérer dans le rapport'**
   String get validateAndInsertButton;
+
+  /// No description provided for @loginAgency.
+  ///
+  /// In fr, this message translates to:
+  /// **'Agence Nationale de Cybersécurité'**
+  String get loginAgency;
+
+  /// No description provided for @requiredField.
+  ///
+  /// In fr, this message translates to:
+  /// **'Champ obligatoire'**
+  String get requiredField;
+
+  /// No description provided for @invalidEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse e-mail invalide'**
+  String get invalidEmail;
+
+  /// No description provided for @mfaNotice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les administrateurs ANCS doivent compléter la vérification à deux facteurs avant d\'accéder au portail d\'audit.'**
+  String get mfaNotice;
 }
 
 class _AppLocalizationsDelegate

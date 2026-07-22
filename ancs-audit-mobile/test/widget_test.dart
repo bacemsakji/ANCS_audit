@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ancs_audit_mobile/features/auth/bloc/auth_bloc.dart';
 import 'package:ancs_audit_mobile/features/auth/data/auth_repository.dart';
-import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
 @GenerateMocks([AuthRepository])

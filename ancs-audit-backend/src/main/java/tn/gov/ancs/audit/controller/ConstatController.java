@@ -47,7 +47,7 @@ public class ConstatController {
     }
 
     @GetMapping("/mission/{missionId}")
-    @PreAuthorize("hasAnyRole('ADMIN_ANCS', 'AUDITEUR', 'RSSI')")
+    @PreAuthorize("hasAnyRole('AUDITEUR', 'RSSI')")
     public ResponseEntity<List<ConstatResponse>> getConstatsByMission(
             @PathVariable("missionId") UUID missionId,
             Authentication authentication) {

@@ -182,12 +182,14 @@ class MissionDetailScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
 
             // Action Buttons
-            if (status != 'TERMINEE') ...[
-              Row(
-                children: [
-                  // Checklist button - only for auditors
-                  if (userRole == 'AUDITEUR')
-                    Expanded(
+            Column(
+              children: [
+                // Checklist button — only for auditors on active missions
+                if (userRole == 'AUDITEUR' && status != 'TERMINEE')
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.s),
+                    child: SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           final missionId = mission['id']?.toString() ?? '';
@@ -199,53 +201,38 @@ class MissionDetailScreen extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         icon: const Icon(Icons.playlist_add_check),
                         label: const Text('Commencer l\'audit'),
                       ),
                     ),
-                  // Report button - auditor creates reports, admin views them
-                  if (userRole == 'AUDITEUR' && status == 'EN_COURS')
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          final missionId = mission['id']?.toString() ?? '';
-                          if (missionId.isNotEmpty) {
-                            context.push('/missions/$missionId/rapport', extra: mission);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.description),
-                        label: const Text('Générer le rapport'),
+                  ),
+
+                // Rapport button — Auditeur: view + modify; Admin: view + modify; RSSI: not shown here
+                if ((userRole == 'AUDITEUR' || userRole == 'ADMIN_ANCS') && status != 'PLANIFIEE')
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final missionId = mission['id']?.toString() ?? '';
+                        if (missionId.isNotEmpty) {
+                          context.push('/missions/$missionId/rapport', extra: mission);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.description_outlined),
+                      label: Text(
+                        userRole == 'ADMIN_ANCS' ? 'Voir / Gérer le rapport' : 'Rapport d\'audit',
                       ),
                     ),
-                  // Admin view-only report button
-                  if (userRole == 'ADMIN_ANCS' && status != 'PLANIFIEE')
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          final missionId = mission['id']?.toString() ?? '';
-                          if (missionId.isNotEmpty) {
-                            context.push('/missions/$missionId/rapport', extra: mission);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.observation,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.visibility),
-                        label: const Text('Voir rapport'),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+                  ),
+              ],
+            ),
           ],
         ),
       ),

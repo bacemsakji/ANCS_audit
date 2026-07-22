@@ -35,7 +35,8 @@ class ChecklistScreen extends StatefulWidget {
 
 class _ChecklistScreenState extends State<ChecklistScreen> {
   List<dynamic> _controles = [];
-  Map<String, Map<String, dynamic>> _constatsMap = {}; // Key: controleId, Value: constatData
+  Map<String, Map<String, dynamic>> _constatsMap =
+      {}; // Key: controleId, Value: constatData
   bool _isLoading = true;
   String? _error;
   bool _isCompleting = false;
@@ -53,19 +54,24 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     });
     try {
       // 1. Charger les contrôles du référentiel
-      final controlesData = await widget.referentielRepository.getControlesByReferentiel(widget.referentielId);
-      
+      final controlesData = await widget.referentielRepository
+          .getControlesByReferentiel(widget.referentielId);
+
       // 2. Charger les constats existants pour la mission
       Map<String, Map<String, dynamic>> map = {};
       try {
-        final constatsData = await widget.constatRepository.getConstatsByMission(widget.missionId);
+        final constatsData = await widget.constatRepository
+            .getConstatsByMission(widget.missionId);
         for (var c in constatsData) {
           final cMap = c as Map<String, dynamic>;
           map[cMap['controleId'].toString()] = cMap;
         }
       } catch (e) {
         // En cas d'échec offline, on ignore les constats existants du serveur (on s'appuie sur le cache local Drift en production)
-        developer.log("Erreur réseau lors de la récupération des constats du serveur: $e", name: 'ChecklistScreen', error: e);
+        developer.log(
+            "Erreur réseau lors de la récupération des constats du serveur: $e",
+            name: 'ChecklistScreen',
+            error: e);
       }
 
       setState(() {
@@ -81,9 +87,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     }
   }
 
-  Future<void> _saveConstat(String controleId, String resultat, String commentaire, String? imagePath) async {
+  Future<void> _saveConstat(String controleId, String resultat,
+      String commentaire, String? imagePath) async {
     final mockId = '${widget.missionId}_$controleId';
-    
+
     // Mettre à jour l'UI locale
     setState(() {
       _constatsMap[controleId] = {
@@ -108,8 +115,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isOnline 
-              ? 'Constat enregistré et synchronisé' 
+          content: Text(widget.isOnline
+              ? 'Constat enregistré et synchronisé'
               : 'Constat enregistré en local (mode hors-ligne)'),
           backgroundColor: AppColors.conforme,
           duration: const Duration(seconds: 1),
@@ -179,7 +186,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         actions: [
           if (widget.isOnline)
             IconButton(
-              icon: _isCompleting 
+              icon: _isCompleting
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -233,7 +240,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     return _ChecklistItemCard(
                       controle: ctrl,
                       constat: constat,
-                      onSave: (resultat, commentaire, imagePath) => _saveConstat(ctrlId, resultat, commentaire, imagePath),
+                      onSave: (resultat, commentaire, imagePath) =>
+                          _saveConstat(
+                              ctrlId, resultat, commentaire, imagePath),
                     );
                   },
                 ),
@@ -309,7 +318,8 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
         setState(() => _selectedImagePath = image.path);
       }
     } catch (e) {
-      developer.log("Erreur lors de la sélection de l'image: $e", name: 'ChecklistScreen', error: e);
+      developer.log("Erreur lors de la sélection de l'image: $e",
+          name: 'ChecklistScreen', error: e);
     }
   }
 
@@ -326,14 +336,18 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     c['categorie'] ?? 'Technique',
-                    style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.s),
@@ -353,14 +367,16 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               ),
             ],
             const SizedBox(height: AppSpacing.m),
-            
+
             // Sélecteurs de résultat
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildResultButton('CONFORME', 'Conforme', AppColors.conforme),
-                _buildResultButton('NON_CONFORME', 'Non Conforme', AppColors.nonConforme),
-                _buildResultButton('OBSERVATION', 'Observation', AppColors.observation),
+                _buildResultButton(
+                    'NON_CONFORME', 'Non Conforme', AppColors.nonConforme),
+                _buildResultButton(
+                    'OBSERVATION', 'Observation', AppColors.observation),
               ],
             ),
             const SizedBox(height: AppSpacing.m),
@@ -371,7 +387,8 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               decoration: const InputDecoration(
                 labelText: 'Commentaire / Observation terrain',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               maxLines: 2,
             ),
@@ -384,7 +401,9 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                   child: OutlinedButton.icon(
                     onPressed: _pickImage,
                     icon: const Icon(Icons.camera_alt, size: 16),
-                    label: Text(_selectedImagePath != null ? 'Changer la preuve' : 'Ajouter une preuve'),
+                    label: Text(_selectedImagePath != null
+                        ? 'Changer la preuve'
+                        : 'Ajouter une preuve'),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: AppColors.primary),
                     ),
@@ -412,7 +431,8 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                     return Container(
                       height: 100,
                       color: AppColors.background,
-                      child: const Center(child: Text('Impossible de charger l\'image')),
+                      child: const Center(
+                          child: Text('Impossible de charger l\'image')),
                     );
                   },
                 ),
@@ -426,17 +446,21 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                 if (widget.constat?['synced'] == false)
                   const Row(
                     children: [
-                      Icon(Icons.cloud_upload_outlined, color: AppColors.observation, size: 16),
+                      Icon(Icons.cloud_upload_outlined,
+                          color: AppColors.observation, size: 16),
                       SizedBox(width: 4),
-                      Text('Non synchronisé', style: TextStyle(fontSize: 11, color: AppColors.observation)),
+                      Text('Non synchronisé',
+                          style: TextStyle(
+                              fontSize: 11, color: AppColors.observation)),
                     ],
                   )
                 else
                   const SizedBox.shrink(),
                 ElevatedButton.icon(
-                  onPressed: _selectedResultat == null 
-                      ? null 
-                      : () => widget.onSave(_selectedResultat!, _commentController.text, _selectedImagePath),
+                  onPressed: _selectedResultat == null
+                      ? null
+                      : () => widget.onSave(_selectedResultat!,
+                          _commentController.text, _selectedImagePath),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -457,9 +481,12 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
     return InkWell(
       onTap: () => setState(() => _selectedResultat = value),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.15) : AppColors.background,
+          color: isSelected
+              ? activeColor.withValues(alpha: 0.15)
+              : AppColors.background,
           border: Border.all(
             color: isSelected ? activeColor : AppColors.divider,
             width: isSelected ? 2 : 1,

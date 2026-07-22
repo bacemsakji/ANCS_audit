@@ -268,4 +268,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get validateAndInsertButton => 'Validate and insert in report';
+
+  @override
+  String get loginAgency => 'National Cybersecurity Agency';
+
+  @override
+  String get requiredField => 'Required field';
+
+  @override
+  String get invalidEmail => 'Invalid email address';
+
+  @override
+  String get mfaNotice =>
+      'ANCS administrators must complete two-factor verification before accessing the audit portal.';
 }

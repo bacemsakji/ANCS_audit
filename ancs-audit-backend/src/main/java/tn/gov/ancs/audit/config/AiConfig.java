@@ -16,7 +16,7 @@ import jakarta.annotation.PostConstruct;
  * Par défaut : {@code ollama} (modèle auto-hébergé, souveraineté des données garantie).</p>
  *
  * <p><strong>⚠️  AVERTISSEMENT SOUVERAINETÉ DES DONNÉES :</strong><br>
- * L'activation du provider {@code openai} ou {@code anthropic} implique l'envoi de données
+ * L'activation du provider {@code openai} implique l'envoi de données
  * de constats d'audit vers des serveurs tiers. Ne jamais activer sans validation formelle
  * de la DGSI et de la direction générale de l'ANCS.</p>
  */
@@ -27,7 +27,7 @@ import jakarta.annotation.PostConstruct;
 @ConfigurationProperties(prefix = "ai")
 public class AiConfig {
 
-    /** Provider actif. Valeurs : {@code ollama}, {@code openai}, {@code anthropic}. */
+    /** Provider actif. Valeurs : {@code ollama}, {@code openai}. */
     private String provider = "ollama";
 
     private OllamaProperties ollama = new OllamaProperties();
@@ -36,7 +36,14 @@ public class AiConfig {
     @PostConstruct
     public void logConfiguration() {
         log.info("Module IA — provider actif: {}", provider);
-        if ("openai".equalsIgnoreCase(provider) || "anthropic".equalsIgnoreCase(provider)) {
+        
+        if (!"ollama".equalsIgnoreCase(provider) && !"openai".equalsIgnoreCase(provider)) {
+            throw new IllegalStateException(
+                "Le provider IA '" + provider + "' n'est pas supporté. Les valeurs valides sont : ollama, openai."
+            );
+        }
+
+        if ("openai".equalsIgnoreCase(provider)) {
             log.warn(
                 "⚠️  AVERTISSEMENT SOUVERAINETÉ DES DONNÉES : le provider IA '{}' est actif. " +
                 "Des données de constats d'audit seront envoyées à un serveur tiers. " +
@@ -56,7 +63,7 @@ public class AiConfig {
     @Setter
     public static class OllamaProperties {
         private String baseUrl = "http://localhost:11434";
-        private String model = "mistral";
+        private String model = "qwen2.5-coder:3b";
         private int timeoutSeconds = 120;
     }
 

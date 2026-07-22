@@ -11,6 +11,7 @@ import 'features/dashboard/presentation/main_screen.dart';
 import 'features/checklist/presentation/checklist_screen.dart';
 import 'features/checklist/data/constat_repository.dart';
 import 'features/checklist/data/referentiel_repository.dart';
+import 'features/rapports/presentation/rapport_view_screen.dart';
 import 'features/rapports/presentation/rapport_generation_screen.dart';
 import 'features/rapports/data/rapport_repository.dart';
 import 'features/missions/presentation/mission_detail_screen.dart';
@@ -20,6 +21,7 @@ import 'core/network/sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/local_db/app_database.dart';
 import 'l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // L'URL de base est configurée via --dart-define=API_BASE_URL=https://api.ancs.gov.tn
 // à la compilation. La valeur par défaut (localhost) est définie dans dio_client.dart.
@@ -30,6 +32,12 @@ import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  final prefs = await SharedPreferences.getInstance();
+  final savedLocale = prefs.getString('locale');
+  final systemLocale = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+  final initialLocaleCode = savedLocale ?? (['fr', 'ar', 'en'].contains(systemLocale) ? systemLocale : 'fr');
+
   // Une seule instance de DioClient, partagée avec tous les repositories et
   // le SyncService — garantit que le mécanisme --dart-define est appliqué
   // de manière cohérente dans toute l'application.
@@ -40,6 +48,7 @@ void main() async {
     dioClient: dioClient,
     authRepository: authRepository,
     appDatabase: appDatabase,
+    initialLocaleCode: initialLocaleCode,
   ));
 }
 
@@ -47,11 +56,13 @@ class AncsAuditApp extends StatefulWidget {
   final DioClient dioClient;
   final AuthRepository authRepository;
   final AppDatabase appDatabase;
+  final String initialLocaleCode;
   const AncsAuditApp({
     Key? key,
     required this.dioClient,
     required this.authRepository,
     required this.appDatabase,
+    required this.initialLocaleCode,
   }) : super(key: key);
 
   @override
@@ -59,12 +70,13 @@ class AncsAuditApp extends StatefulWidget {
 }
 
 class _AncsAuditAppState extends State<AncsAuditApp> {
-  Locale _locale = const Locale('fr');
+  late Locale _locale;
   late final SyncService _syncService;
 
   @override
   void initState() {
     super.initState();
+    _locale = Locale(widget.initialLocaleCode);
     // SyncService reçoit le même DioClient que le reste de l'application —
     // la synchronisation arrière-plan cible exactement la même URL que l'UI.
     _syncService = SyncService(
@@ -121,10 +133,18 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
         GoRoute(
           path: '/dashboard',
           builder: (context, state) => MainScreen(
-            onLocaleSwitch: () {
+            onLocaleSwitch: () async {
               setState(() {
-                _locale = _isArabic ? const Locale('fr') : const Locale('ar');
+                if (_locale.languageCode == 'fr') {
+                  _locale = const Locale('ar');
+                } else if (_locale.languageCode == 'ar') {
+                  _locale = const Locale('en');
+                } else {
+                  _locale = const Locale('fr');
+                }
               });
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('locale', _locale.languageCode);
             },
             isArabic: _isArabic,
           ),
@@ -159,16 +179,58 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
             );
           },
         ),
+
+        // ─── Rapport : Vue consultation (toutes versions) ─────────────────────
+        // Route principale vers laquelle pointent tous les boutons "Voir rapport"
+        // de l'Admin, de l'Auditeur et du RSSI (via /rapport/organisme).
         GoRoute(
           path: '/missions/:id/rapport',
           builder: (context, state) {
             final missionId = state.pathParameters['id']!;
             final mission = state.extra as Map<String, dynamic>? ?? {};
-            final orgNom = mission['organismeNom'] ?? 'Organisme';
+            final orgNom = (mission['organismeNom'] ?? 'Organisme') as String;
+            final userRole =
+                authState is AuthAuthenticated ? authState.role : 'AUDITEUR';
+
+            return RapportViewScreen(
+              missionId: missionId,
+              organismeNom: orgNom,
+              userRole: userRole,
+              repository: RapportRepository(dioClient: widget.dioClient),
+            );
+          },
+        ),
+
+        // ─── Rapport : Génération / Modification (nouvelle version) ───────────
+        // Accessible uniquement depuis RapportViewScreen via le bouton "Modifier".
+        GoRoute(
+          path: '/missions/:id/rapport/nouveau',
+          builder: (context, state) {
+            final missionId = state.pathParameters['id']!;
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            final orgNom = (extra['organismeNom'] ?? 'Organisme') as String;
 
             return RapportGenerationScreen(
               missionId: missionId,
               organismeNom: orgNom,
+              repository: RapportRepository(dioClient: widget.dioClient),
+            );
+          },
+        ),
+
+        // ─── Rapport : Vue RSSI (par organisme, sans missionId) ───────────────
+        GoRoute(
+          path: '/rapport/organisme',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            final orgNom = (extra['organismeNom'] ?? 'Mon organisme') as String;
+            final userRole =
+                authState is AuthAuthenticated ? authState.role : 'RSSI';
+
+            return RapportViewScreen(
+              organismeNom: orgNom,
+              userRole: userRole,
+              isOrganismeView: true,
               repository: RapportRepository(dioClient: widget.dioClient),
             );
           },

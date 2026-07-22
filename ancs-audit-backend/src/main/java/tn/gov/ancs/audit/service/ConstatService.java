@@ -76,8 +76,8 @@ public class ConstatService {
         log.debug("Constat enregistré : mission {}, contrôle {}, résultat {}", 
             mission.getId(), controle.getId(), request.getResultat());
 
-        // Auto-création d'une action corrective pour les constats NON_CONFORME
-        if (request.getResultat() == ResultatConstat.NON_CONFORME) {
+        // Auto-création d'une action corrective pour les constats NON_CONFORME s'il n'en existe pas déjà
+        if (request.getResultat() == ResultatConstat.NON_CONFORME && actionRepository.findByConstatId(saved.getId()).isEmpty()) {
             createDefaultAction(saved, controle);
         }
 

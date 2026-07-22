@@ -68,9 +68,15 @@ public class OllamaAiSummaryService implements AiSummaryService {
             JsonNode root = objectMapper.readTree(response.body());
             String resultText = root.path("response").asText();
 
+            if (resultText == null || resultText.isBlank()) {
+                throw new AiUnavailableException("La réponse générée par le modèle Ollama est vide.");
+            }
+
             log.info("Génération de la synthèse exécutive terminée avec succès via Ollama.");
             return resultText;
 
+        } catch (AiUnavailableException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Serveur Ollama local injoignable ou en échec de timeout", e);
             throw new AiUnavailableException("Le service de génération IA local est temporairement indisponible", e);

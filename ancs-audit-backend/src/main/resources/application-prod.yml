@@ -41,7 +41,7 @@ ai:
   provider: ${AI_PROVIDER:ollama}
   ollama:
     base-url: ${AI_OLLAMA_BASE_URL}
-    model: ${AI_OLLAMA_MODEL:mistral}
+    model: ${AI_OLLAMA_MODEL:qwen2.5-coder:3b}
 
 firebase:
   enabled: ${FIREBASE_ENABLED:true}

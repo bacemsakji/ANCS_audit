@@ -86,5 +86,9 @@
   "generateIaSummaryButton": "Generate Draft (AI)",
   "iaDraftBadge": "AI Generated — to be reviewed",
   "iaOfflineError": "AI function unavailable offline",
-  "validateAndInsertButton": "Validate and insert in report"
+  "validateAndInsertButton": "Validate and insert in report",
+  "loginAgency": "National Cybersecurity Agency",
+  "requiredField": "Required field",
+  "invalidEmail": "Invalid email address",
+  "mfaNotice": "ANCS administrators must complete two-factor verification before accessing the audit portal."
 }

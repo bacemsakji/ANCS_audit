@@ -14,7 +14,7 @@ class AppTheme {
         seedColor: AppColors.primary,
         primary: AppColors.primary,
         secondary: AppColors.accent,
-        background: AppColors.background,
+        surface: AppColors.background,
       ),
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
@@ -26,7 +26,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.06),
+        shadowColor: Colors.black.withValues(alpha: 0.06),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -36,10 +36,18 @@ class AppTheme {
         thickness: 1,
       ),
       textTheme: TextTheme(
-        titleLarge: baseTextStyle.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-        titleMedium: baseTextStyle.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-        bodyLarge: baseTextStyle.copyWith(fontSize: 14, color: AppColors.textPrimary),
-        bodySmall: baseTextStyle.copyWith(fontSize: 12, color: AppColors.textSecondary),
+        titleLarge: baseTextStyle.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary),
+        titleMedium: baseTextStyle.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary),
+        bodyLarge:
+            baseTextStyle.copyWith(fontSize: 14, color: AppColors.textPrimary),
+        bodySmall: baseTextStyle.copyWith(
+            fontSize: 12, color: AppColors.textSecondary),
       ),
     );
   }

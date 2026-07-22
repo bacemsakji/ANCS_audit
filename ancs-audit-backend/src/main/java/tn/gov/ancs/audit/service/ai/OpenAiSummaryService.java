@@ -79,11 +79,24 @@ public class OpenAiSummaryService implements AiSummaryService {
             }
 
             JsonNode root = objectMapper.readTree(response.body());
-            String resultText = root.path("choices").get(0).path("message").path("content").asText();
+            JsonNode choices = root.path("choices");
+            String resultText = "";
+            if (choices.isArray() && choices.size() > 0) {
+                JsonNode message = choices.get(0).path("message");
+                if (!message.isMissingNode()) {
+                    resultText = message.path("content").asText();
+                }
+            }
+
+            if (resultText == null || resultText.isBlank()) {
+                throw new AiUnavailableException("La réponse générée par OpenAI est vide ou invalide.");
+            }
 
             log.info("Génération de la synthèse exécutive terminée avec succès via OpenAI.");
             return resultText;
 
+        } catch (AiUnavailableException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Erreur lors de la communication externe avec l'API OpenAI", e);
             throw new AiUnavailableException("Le service OpenAI externe est injoignable", e);

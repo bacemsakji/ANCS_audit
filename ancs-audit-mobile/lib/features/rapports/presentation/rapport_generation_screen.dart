@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
@@ -28,7 +28,6 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
   bool _isIaGenerated = false;
   bool _isGeneratingReport = false;
   String _selectedFormat = 'PDF';
-  String? _downloadUrl;
   String? _message;
 
   @override
@@ -70,7 +69,6 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
 
     setState(() {
       _isGeneratingReport = true;
-      _downloadUrl = null;
       _message = null;
     });
 
@@ -83,13 +81,20 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
       );
 
       final String rapportId = rapportData['rapportId'].toString();
-      final downloadUrl = await widget.repository.getDownloadUrl(rapportId);
+      // Pre-fetch the URL so the view screen can show it immediately
+      await widget.repository.getDownloadUrl(rapportId);
 
-      setState(() {
-        _downloadUrl = downloadUrl;
-        _isGeneratingReport = false;
-        _message = 'Rapport généré avec succès !';
-      });
+      if (mounted) {
+        // Pop back to the view screen — it will reload and show the new version
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Rapport compilé avec succès ! Vous pouvez maintenant le télécharger.'),
+            backgroundColor: Color(0xFF2E7D32),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        context.pop(); // return to RapportViewScreen
+      }
     } catch (e) {
       setState(() {
         _isGeneratingReport = false;
@@ -131,7 +136,7 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
                               children: [
                                 CircularProgressIndicator(color: AppColors.primary),
                                 SizedBox(height: AppSpacing.s),
-                                Text('Modèle local Ollama (Mistral) en cours de rédaction...', style: TextStyle(fontSize: 12)),
+                                Text('Modèle local Ollama (Qwen 2.5 Coder 3B) en cours de rédaction...', style: TextStyle(fontSize: 12)),
                               ],
                             ),
                           ),
@@ -155,7 +160,7 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.observationBg,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.observation.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.observation.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   children: [
@@ -222,52 +227,19 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
             ),
             const SizedBox(height: AppSpacing.m),
 
-            // Retours messages & liens de téléchargement
+            // Error message only (success now pops back to view screen)
             if (_message != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
                 child: Center(
                   child: Text(
                     _message!,
-                    style: TextStyle(
-                      color: _downloadUrl != null ? AppColors.conforme : AppColors.nonConforme,
+                    style: const TextStyle(
+                      color: AppColors.nonConforme,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ),
-
-            if (_downloadUrl != null)
-              AppCard(
-                color: AppColors.conforme.withOpacity(0.05),
-                child: Column(
-                  children: [
-                    const Icon(Icons.check_circle_outline, color: AppColors.conforme, size: 36),
-                    const SizedBox(height: AppSpacing.s),
-                    Text(
-                      'Votre document est prêt pour le téléchargement sécurisé.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: AppSpacing.m),
-                    SecondaryButton(
-                      label: 'Télécharger le document',
-                      icon: Icons.download_for_offline_outlined,
-                      onPressed: () async {
-                        final uri = Uri.parse(_downloadUrl!);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Impossible d\'ouvrir le lien de téléchargement'),
-                              backgroundColor: AppColors.nonConforme,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
                 ),
               ),
           ],

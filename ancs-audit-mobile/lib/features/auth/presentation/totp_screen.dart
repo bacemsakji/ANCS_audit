@@ -88,7 +88,8 @@ class _TotpScreenState extends State<TotpScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
                 child: Column(
                   children: [
-                    const Icon(Icons.shield_outlined, color: Colors.white, size: 48),
+                    const Icon(Icons.shield_outlined,
+                        color: Colors.white, size: 48),
                     const SizedBox(height: AppSpacing.m),
                     const Text(
                       'Vérification de sécurité',
@@ -103,7 +104,7 @@ class _TotpScreenState extends State<TotpScreen> {
                       'Saisissez le code à 6 chiffres généré par votre application d\'authentification (Google Authenticator).',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 13,
                         height: 1.5,
                       ),
@@ -163,7 +164,8 @@ class _TotpScreenState extends State<TotpScreen> {
                                 contentPadding: EdgeInsets.zero,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: AppColors.divider),
+                                  borderSide: const BorderSide(
+                                      color: AppColors.divider),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
