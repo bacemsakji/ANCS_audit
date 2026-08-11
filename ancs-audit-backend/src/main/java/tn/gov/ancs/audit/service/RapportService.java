@@ -797,7 +797,6 @@ public class RapportService {
 
     private void addBullet(XWPFDocument doc, String text) {
         XWPFParagraph p = doc.createParagraph();
-        p.setNumID(null); // no list numbering, just indent
         XWPFRun run = p.createRun();
         run.setText("• " + text);
     }
