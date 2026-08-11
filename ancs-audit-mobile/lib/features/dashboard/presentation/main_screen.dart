@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/network/dio_client.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -39,7 +37,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    // Utiliser la configuration locale de l'émulateur par défaut
     _dioClient = DioClient();
     _dashboardRepository = DashboardRepository(dioClient: _dioClient);
     _missionRepository = MissionRepository(dioClient: _dioClient);
@@ -65,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  List<BottomNavigationBarItem> _buildNavItems(String role) {
+  List<NavigationDestination> _buildNavDestinations(String role) {
     final String homeLabel =
         widget.isArabic ? 'لوحة التحكم' : 'Tableau de bord';
     final String missionsLabel = widget.isArabic ? 'المهمات' : 'Missions';
@@ -73,36 +70,36 @@ class _MainScreenState extends State<MainScreen> {
 
     if (role == 'ADMIN_ANCS') {
       return [
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: const Icon(Icons.dashboard_outlined),
-          activeIcon: const Icon(Icons.dashboard),
+          selectedIcon: const Icon(Icons.dashboard),
           label: homeLabel,
         ),
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: const Icon(Icons.assignment_outlined),
-          activeIcon: const Icon(Icons.assignment),
+          selectedIcon: const Icon(Icons.assignment),
           label: missionsLabel,
         ),
       ];
     } else if (role == 'RSSI') {
       return [
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: const Icon(Icons.business_center_outlined),
-          activeIcon: const Icon(Icons.business_center),
+          selectedIcon: const Icon(Icons.business_center),
           label: homeLabel,
         ),
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: const Icon(Icons.playlist_add_check_outlined),
-          activeIcon: const Icon(Icons.playlist_add_check),
+          selectedIcon: const Icon(Icons.playlist_add_check),
           label: actionsLabel,
         ),
       ];
     } else {
       // AUDITEUR
       return [
-        BottomNavigationBarItem(
+        NavigationDestination(
           icon: const Icon(Icons.assignment_outlined),
-          activeIcon: const Icon(Icons.assignment),
+          selectedIcon: const Icon(Icons.assignment),
           label: missionsLabel,
         ),
       ];
@@ -121,7 +118,7 @@ class _MainScreenState extends State<MainScreen> {
         }
 
         final screens = _buildScreens(role);
-        final navItems = _buildNavItems(role);
+        final navDestinations = _buildNavDestinations(role);
 
         // Protection de débordement d'index lors des changements de profil
         if (_selectedIndex >= screens.length) {
@@ -167,12 +164,12 @@ class _MainScreenState extends State<MainScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.language),
-                tooltip: 'Changer la langue / تغيير اللغة',
+                tooltip: widget.isArabic ? 'تغيير اللغة' : 'Changer la langue',
                 onPressed: widget.onLocaleSwitch,
               ),
               IconButton(
                 icon: const Icon(Icons.logout),
-                tooltip: 'Déconnexion',
+                tooltip: widget.isArabic ? 'تسجيل الخروج' : 'Déconnexion',
                 onPressed: () {
                   context.read<AuthBloc>().add(LogoutRequested());
                 },
@@ -183,14 +180,13 @@ class _MainScreenState extends State<MainScreen> {
             index: _selectedIndex,
             children: screens,
           ),
-          bottomNavigationBar: navItems.length <= 1
+          bottomNavigationBar: navDestinations.length <= 1
               ? null
-              : BottomNavigationBar(
-                  currentIndex: _selectedIndex,
-                  onTap: (index) => setState(() => _selectedIndex = index),
-                  selectedItemColor: AppColors.primary,
-                  unselectedItemColor: AppColors.textSecondary,
-                  items: navItems,
+              : NavigationBar(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (index) =>
+                      setState(() => _selectedIndex = index),
+                  destinations: navDestinations,
                 ),
         );
       },

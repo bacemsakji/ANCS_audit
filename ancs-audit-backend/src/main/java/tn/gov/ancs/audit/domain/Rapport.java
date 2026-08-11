@@ -44,6 +44,13 @@ public class Rapport extends BaseEntity {
     @Column(name = "fichier_url", columnDefinition = "TEXT")
     private String fichierUrl;
 
+    /**
+     * Chemin/clé du document résumé (points clés) dans le bucket MinIO.
+     * {@code null} pour les rapports générés avant l'ajout de cette fonctionnalité.
+     */
+    @Column(name = "fichier_resume_url", columnDefinition = "TEXT")
+    private String fichierResumeUrl;
+
     @Column(name = "date_generation")
     private Instant dateGeneration;
 

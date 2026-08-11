@@ -25,6 +25,10 @@ class AppColors {
   static const Color prioriteMoyenne = Color(0xFFF9A825);
   static const Color prioriteFaible = Color(0xFF388E3C);
 
+  // Couleurs contextuelles & neutres
+  static const Color offlineWarning = Color(0xFF7B2D00);
+  static const Color neutralIcon = Color(0xFF455A64);
+
   // Fond translucide pour les badges
   static Color conformeBg = conforme.withValues(alpha: 0.1);
   static Color nonConformeBg = nonConforme.withValues(alpha: 0.1);

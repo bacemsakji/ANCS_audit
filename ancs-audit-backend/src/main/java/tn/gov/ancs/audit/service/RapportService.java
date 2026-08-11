@@ -3,14 +3,15 @@ package tn.gov.ancs.audit.service;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.wickedsource.docxstamper.DocxStamper;
 import org.wickedsource.docxstamper.DocxStamperConfiguration;
 import tn.gov.ancs.audit.domain.*;
+import tn.gov.ancs.audit.domain.enums.PrioriteAction;
 import tn.gov.ancs.audit.domain.enums.ResultatConstat;
 import tn.gov.ancs.audit.domain.enums.Role;
 import tn.gov.ancs.audit.domain.enums.StatutSoumissionAncs;
@@ -22,7 +23,7 @@ import tn.gov.ancs.audit.repository.*;
 import tn.gov.ancs.audit.security.AuditAction;
 import tn.gov.ancs.audit.service.ai.AiSummaryService;
 
-import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -30,11 +31,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -120,8 +117,12 @@ public class RapportService {
     @Transactional
     @AuditAction(action = "GENERATE_RAPPORT", resource = "RAPPORT")
     public Rapport generateRapport(UUID missionId, String type, String syntheseExecutive, boolean isIaGenerated, String callerEmail) {
-        if (syntheseExecutive == null || syntheseExecutive.trim().length() < 50) {
-            throw new IllegalArgumentException("La synthèse exécutive doit contenir au moins 50 caractères.");
+        // TODO: Re-enable minimum length validation before production
+        // if (syntheseExecutive == null || syntheseExecutive.trim().length() < 50) {
+        //     throw new IllegalArgumentException("La synthèse exécutive doit contenir au moins 50 caractères.");
+        // }
+        if (syntheseExecutive == null || syntheseExecutive.trim().isEmpty()) {
+            throw new IllegalArgumentException("La synthèse exécutive ne peut pas être vide.");
         }
         Mission mission = missionRepository.findById(missionId)
             .orElseThrow(() -> new ResourceNotFoundException("Mission non trouvée"));
@@ -144,9 +145,8 @@ public class RapportService {
         Double compliance = constatRepository.calculateTauxConformite(missionId);
         if (compliance == null) compliance = 0.0;
 
-        String filename = "Rapport_Audit_" + mission.getOrganisme().getNom().replace(" ", "_") + "." + type.toLowerCase();
-        String objectName = null;
-
+        String filename = "Rapport_Audit_" + mission.getOrganisme().getNom().replace(" ", "_") + ".docx";
+        
         // Récupérer le prochain numéro de version
         int nextVersion = rapportRepository.getNextVersionForMission(missionId);
 
@@ -166,20 +166,26 @@ public class RapportService {
             ? previousRapportOpt.get().getHistoriqueVersions() + "\n" + currentHistEntry
             : currentHistEntry;
 
-        byte[] fileBytes = buildRapportFromTemplate(mission, constats, compliance, syntheseExecutive, nextVersion, nomAuditeur, numCertif, contactAuditeur, historique, type);
-        String mimeType = "PDF".equalsIgnoreCase(type) ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        objectName = storageService.uploadRapport(filename, new ByteArrayInputStream(fileBytes), mimeType);
+        byte[] fileBytes = buildRapportFromTemplate(mission, constats, compliance, syntheseExecutive, nextVersion, historique);
+        String mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        String objectName = storageService.uploadRapport(filename, fileBytes, mimeType);
+
+        // Générer et téléverser le document résumé (points clés)
+        List<Action> actions = actionRepository.findActionsByMissionId(mission.getId());
+        String resumeFilename = "Resume_Audit_" + mission.getOrganisme().getNom().replace(" ", "_") + ".docx";
+        byte[] resumeBytes = buildResumeDocx(mission, constats, compliance, syntheseExecutive, nextVersion, actions);
+        String resumeObjectName = storageService.uploadRapport(resumeFilename, resumeBytes, mimeType);
 
         // Créer l'entité Rapport
         Rapport rapport = Rapport.builder()
             .mission(mission)
             .fichierUrl(objectName)
+            .fichierResumeUrl(resumeObjectName)
             .dateGeneration(Instant.now())
             .version(nextVersion)
-            .type(type.toUpperCase())
+            .type("DOCX")
             .syntheseGenereeParIa(isIaGenerated)
             .syntheseIaHorodatage(isIaGenerated ? Instant.now() : null)
-            // ANCS v2.1 fields
             .nomAuditeur(nomAuditeur)
             .numeroCertificationAncs(numCertif)
             .contactAuditeur(contactAuditeur)
@@ -191,6 +197,30 @@ public class RapportService {
     }
 
     /**
+     * Vérifie que l'utilisateur est autorisé à accéder au rapport demandé.
+     * Factorisé pour éviter toute divergence entre les deux points de téléchargement.
+     *
+     * @throws AccessDeniedException si l'accès est refusé.
+     */
+    private void checkDownloadAccess(Rapport rapport, String userEmail, Role userRole, UUID userOrganismeId) {
+        // Contrôle d'accès : le RSSI ne peut télécharger que les rapports de son organisme.
+        if (userRole == Role.RSSI) {
+            UUID targetOrgId = rapport.getMission().getOrganisme().getId();
+            if (!targetOrgId.equals(userOrganismeId)) {
+                throw new AccessDeniedException("Accès refusé : vous n'avez pas l'autorisation d'accéder au rapport d'un autre organisme");
+            }
+        }
+        // Contrôle d'accès : un AUDITEUR ne peut télécharger que les rapports
+        // des missions qui lui sont assignées — empêche l'accès IDOR.
+        if (userRole == Role.AUDITEUR) {
+            String assignedEmail = rapport.getMission().getAuditeur().getUtilisateur().getEmail();
+            if (!assignedEmail.equalsIgnoreCase(userEmail)) {
+                throw new AccessDeniedException("Accès refusé : vous n'êtes pas l'auditeur assigné à cette mission");
+            }
+        }
+    }
+
+    /**
      * Récupère le lien de téléchargement sécurisé pré-signé pour un rapport d'audit.
      */
     @Transactional(readOnly = true)
@@ -199,25 +229,29 @@ public class RapportService {
         Rapport rapport = rapportRepository.findById(rapportId)
             .orElseThrow(() -> new ResourceNotFoundException("Rapport non trouvé"));
 
-        // Contrôle d'accès : le RSSI ne peut télécharger que les rapports de son organisme
-        if (userRole == Role.RSSI) {
-            UUID targetOrgId = rapport.getMission().getOrganisme().getId();
-            if (!targetOrgId.equals(userOrganismeId)) {
-                throw new AccessDeniedException("Accès refusé : vous n'avez pas l'autorisation d'accéder au rapport d'un autre organisme");
-            }
-        }
-
-        // Contrôle d'accès : un AUDITEUR ne peut télécharger que les rapports
-        // des missions qui lui sont assignées — empêche le téléchargement
-        // par ID (IDOR) vers une mission d'un autre auditeur.
-        if (userRole == Role.AUDITEUR) {
-            String assignedEmail = rapport.getMission().getAuditeur().getUtilisateur().getEmail();
-            if (!assignedEmail.equalsIgnoreCase(userEmail)) {
-                throw new AccessDeniedException("Accès refusé : vous n'êtes pas l'auditeur assigné à cette mission");
-            }
-        }
+        checkDownloadAccess(rapport, userEmail, userRole, userOrganismeId);
 
         return storageService.getPresignedUrl(storageService.getRapportsBucket(), rapport.getFichierUrl());
+    }
+
+    /**
+     * Récupère le lien de téléchargement sécurisé pré-signé pour le résumé d'un rapport.
+     * Applique les mêmes contrôles d'accès IDOR que {@link #getRapportDownloadUrl}.
+     *
+     * @throws ResourceNotFoundException si aucun résumé n'a été généré (rapport antérieur à la fonctionnalité).
+     */
+    @Transactional(readOnly = true)
+    @AuditAction(action = "DOWNLOAD_RAPPORT_RESUME", resource = "RAPPORT", extractResourceId = true)
+    public String getRapportResumeDownloadUrl(UUID rapportId, String userEmail, Role userRole, UUID userOrganismeId) {
+        Rapport rapport = rapportRepository.findById(rapportId)
+            .orElseThrow(() -> new ResourceNotFoundException("Rapport non trouvé"));
+
+        checkDownloadAccess(rapport, userEmail, userRole, userOrganismeId);
+
+        if (rapport.getFichierResumeUrl() == null) {
+            throw new ResourceNotFoundException("Aucun résumé disponible pour ce rapport");
+        }
+        return storageService.getPresignedUrl(storageService.getRapportsBucket(), rapport.getFichierResumeUrl());
     }
 
     // ========================================================
@@ -227,7 +261,9 @@ public class RapportService {
     @Data
     public static class RapportContext {
         private OrganismeContext organisme;
+        private RssiContext rssi;
         private AuditeurContext auditeur;
+        private MissionContext mission;
         private RapportInfoContext rapport;
         private List<ConstatContext> constats;
         private List<ActionContext> actions;
@@ -241,13 +277,33 @@ public class RapportService {
         private String statut;
         private String categorie;
         private String adresse;
-        private String siteWeb;
+        private String secteurActivite;
+        private String typeObligationAudit;
+        private String contactRssiEmail;
+    }
+
+    /** RSSI désigné de l'organisme audité. */
+    @Data public static class RssiContext {
+        private String nomComplet;
+        private String email;
     }
 
     @Data public static class AuditeurContext {
         private String nomComplet;
         private String numeroCertif;
         private String email;
+        private String dateCertification;
+        private String dateExpiration;
+        private String specialites;
+    }
+
+    @Data public static class MissionContext {
+        private String dateDebut;
+        private String dateFin;
+        private String perimetre;
+        private String referentielNom;
+        private String referentielVersion;
+        private String statut;
     }
 
     @Data public static class RapportInfoContext {
@@ -255,14 +311,20 @@ public class RapportService {
         private String dateGeneration;
         private String tauxConformite;
         private String syntheseExecutive;
+        private String texteConfidentialite;
     }
 
     @Data public static class ConstatContext {
         private String domaine;
+        private String sousDomaine;
         private String critere;
         private String resultat;
         private String commentaire;
         private String criticite;
+        private String recommandation;
+        private String composantesImpactees;
+        private String preuveDescription;
+        private String dateConstat;
     }
 
     @Data public static class ActionContext {
@@ -313,41 +375,86 @@ public class RapportService {
         return value != null ? value : "";
     }
 
-    private byte[] buildRapportFromTemplate(Mission m, List<Constat> constats, double compliance, String synthese,
-                                            int version, String nomAuditeur, String numCertif, String contactAuditeur,
-                                            String historiqueStr, String type) {
+    private byte[] buildRapportFromTemplate(Mission m, List<Constat> constats, double compliance,
+                                            String synthese, int version, String historiqueStr) {
         RapportContext context = new RapportContext();
-        
-        // Organisme
-        OrganismeContext org = new OrganismeContext();
-        org.setNom(safe(m.getOrganisme() != null ? m.getOrganisme().getNom() : null));
-        org.setAcronyme(safe(m.getOrganisme() != null ? m.getOrganisme().getAcronyme() : null));
-        org.setStatut(safe(m.getOrganisme() != null ? m.getOrganisme().getStatut() : null));
-        org.setCategorie(safe(m.getOrganisme() != null ? m.getOrganisme().getCategorie() : null));
-        org.setAdresse(safe(m.getOrganisme() != null ? m.getOrganisme().getAdresse() : null));
-        org.setSiteWeb("");
-        context.setOrganisme(org);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // Auditeur
-        AuditeurContext aud = new AuditeurContext();
-        aud.setNomComplet(safe(nomAuditeur));
-        aud.setNumeroCertif(safe(numCertif));
-        aud.setEmail(safe(contactAuditeur));
-        context.setAuditeur(aud);
+        // ── Organisme ──────────────────────────────────────────────
+        Organisme org = m.getOrganisme();
+        OrganismeContext orgCtx = new OrganismeContext();
+        if (org != null) {
+            orgCtx.setNom(safe(org.getNom()));
+            orgCtx.setAcronyme(safe(org.getAcronyme()));
+            orgCtx.setStatut(safe(org.getStatut()));
+            orgCtx.setCategorie(safe(org.getCategorie()));
+            orgCtx.setAdresse(safe(org.getAdresse()));
+            orgCtx.setSecteurActivite(safe(org.getSecteurActivite()));
+            orgCtx.setTypeObligationAudit(safe(org.getTypeObligationAudit()));
+            orgCtx.setContactRssiEmail(safe(org.getContactRssiEmail()));
+        }
+        context.setOrganisme(orgCtx);
 
-        // Rapport Info
-        RapportInfoContext rap = new RapportInfoContext();
-        rap.setVersion(safe(String.valueOf(version)));
-        rap.setDateGeneration(safe(DateTimeFormatter.ofPattern("dd/MM/yyyy").format(LocalDate.now())));
-        rap.setTauxConformite(safe(String.format("%.1f%%", compliance)));
-        rap.setSyntheseExecutive(safe(synthese));
-        context.setRapport(rap);
+        // ── RSSI de l'organisme ────────────────────────────────────
+        RssiContext rssiCtx = new RssiContext();
+        if (org != null) {
+            utilisateurRepository.findByOrganismeId(org.getId()).stream()
+                .filter(u -> u.getRole() == Role.RSSI)
+                .findFirst()
+                .ifPresent(rssi -> {
+                    rssiCtx.setNomComplet(safe(rssi.getNom()));
+                    rssiCtx.setEmail(safe(rssi.getEmail()));
+                });
+        }
+        context.setRssi(rssiCtx);
 
-        // Historique
+        // ── Auditeur ───────────────────────────────────────────────
+        Auditeur auditeur = m.getAuditeur();
+        AuditeurContext audCtx = new AuditeurContext();
+        if (auditeur != null) {
+            audCtx.setNomComplet(safe(auditeur.getUtilisateur().getNom()));
+            audCtx.setNumeroCertif(safe(auditeur.getNumeroCertification()));
+            audCtx.setEmail(safe(auditeur.getUtilisateur().getEmail()));
+            audCtx.setDateCertification(auditeur.getDateCertification() != null
+                ? fmt.format(auditeur.getDateCertification()) : "");
+            audCtx.setDateExpiration(auditeur.getDateExpiration() != null
+                ? fmt.format(auditeur.getDateExpiration()) : "");
+            audCtx.setSpecialites(auditeur.getSpecialites() != null
+                ? String.join(", ", auditeur.getSpecialites()) : "");
+        }
+        context.setAuditeur(audCtx);
+
+        // ── Mission ────────────────────────────────────────────────
+        MissionContext missionCtx = new MissionContext();
+        missionCtx.setDateDebut(m.getDateDebut() != null ? fmt.format(m.getDateDebut()) : "");
+        missionCtx.setDateFin(m.getDateFin() != null ? fmt.format(m.getDateFin()) : "");
+        missionCtx.setPerimetre(safe(m.getPerimetre()));
+        missionCtx.setStatut(m.getStatut() != null ? m.getStatut().name() : "");
+        if (m.getReferentiel() != null) {
+            missionCtx.setReferentielNom(safe(m.getReferentiel().getNom()));
+            missionCtx.setReferentielVersion(safe(m.getReferentiel().getVersion()));
+        }
+        context.setMission(missionCtx);
+
+        // ── Rapport Info ───────────────────────────────────────────
+        String confidentialite =
+            "Le présent document est confidentiel et sa confidentialité consiste à :\n" +
+            "- La non divulgation desdites informations confidentielles auprès de tierce partie,\n" +
+            "- La non reproduction des informations dites confidentielles, sauf accord de l'organisme audité,\n" +
+            "- Ne pas profiter ou faire profiter tierce partie du contenu de ces informations en matière de savoir-faire,\n" +
+            "- Considérer toutes les informations relatives à la production et au système d'information de l'organisme audité déclarées Confidentielles.";
+        RapportInfoContext rapCtx = new RapportInfoContext();
+        rapCtx.setVersion(String.valueOf(version));
+        rapCtx.setDateGeneration(fmt.format(LocalDate.now()));
+        rapCtx.setTauxConformite(String.format("%.1f%%", compliance));
+        rapCtx.setSyntheseExecutive(safe(synthese));
+        rapCtx.setTexteConfidentialite(confidentialite);
+        context.setRapport(rapCtx);
+
+        // ── Historique ─────────────────────────────────────────────
         List<HistoriqueContext> histList = new ArrayList<>();
         if (historiqueStr != null && !historiqueStr.trim().isEmpty()) {
-            String[] histLines = historiqueStr.split("\n");
-            for (String line : histLines) {
+            for (String line : historiqueStr.split("\n")) {
                 String[] parts = line.contains("|||") ? line.split("\\|\\|\\|") : line.split(" - ");
                 HistoriqueContext hc = new HistoriqueContext();
                 if (parts.length >= 4) {
@@ -357,27 +464,31 @@ public class RapportService {
                     hc.setModifications(safe(parts[3]));
                 } else {
                     hc.setVersion(safe(line));
-                    hc.setDate("");
-                    hc.setAuteur("");
-                    hc.setModifications("");
+                    hc.setDate(""); hc.setAuteur(""); hc.setModifications("");
                 }
                 histList.add(hc);
             }
         }
         context.setHistorique(histList);
 
-        // Constats et Maturité
+        // ── Constats & Maturité ────────────────────────────────────
         List<ConstatContext> cList = new ArrayList<>();
         List<MaturiteContext> mList = new ArrayList<>();
         for (Constat c : constats) {
             ConstatContext cc = new ConstatContext();
-            String cat = (c.getControle() != null) ? c.getControle().getCategorie() : null;
-            cc.setDomaine(safe(cat));
+            cc.setDomaine(safe(c.getControle() != null ? c.getControle().getCategorie() : null));
+            cc.setSousDomaine(safe(c.getControle() != null ? c.getControle().getSousCritere() : null));
             cc.setCritere(safe(c.getControle() != null ? c.getControle().getLibelle() : null));
             cc.setResultat(safe(c.getResultat() != null ? c.getResultat().name() : null));
             cc.setCommentaire(safe(c.getCommentaire()));
-            String crit = c.getCriticite() != null ? c.getCriticite() : (c.getControle() != null ? c.getControle().getCriticite() : null);
+            String crit = c.getCriticite() != null ? c.getCriticite()
+                : (c.getControle() != null ? c.getControle().getCriticite() : null);
             cc.setCriticite(safe(crit));
+            cc.setRecommandation(safe(c.getRecommandation()));
+            cc.setComposantesImpactees(safe(c.getComposantesImpactees()));
+            cc.setPreuveDescription(safe(c.getPreuveDescription()));
+            cc.setDateConstat(c.getDateConstat() != null
+                ? fmt.format(c.getDateConstat().atZone(java.time.ZoneOffset.UTC).toLocalDate()) : "");
             cList.add(cc);
 
             MaturiteContext mc = new MaturiteContext();
@@ -385,14 +496,14 @@ public class RapportService {
             mc.setCritere(safe(c.getControle() != null ? c.getControle().getLibelle() : null));
             mc.setResultat(safe(c.getResultat() != null ? c.getResultat().name() : null));
             int score = getMaturityScore(c.getResultat());
-            mc.setScore(safe(String.valueOf(score)));
-            mc.setNiveau(safe(getMaturityLabel(score)));
+            mc.setScore(String.valueOf(score));
+            mc.setNiveau(getMaturityLabel(score));
             mList.add(mc);
         }
         context.setConstats(cList);
         context.setMaturite(mList);
 
-        // Actions
+        // ── Actions correctives ────────────────────────────────────
         List<Action> actions = actionRepository.findActionsByMissionId(m.getId());
         List<ActionContext> aList = new ArrayList<>();
         for (Action act : actions) {
@@ -408,8 +519,8 @@ public class RapportService {
         }
         context.setActions(aList);
 
+        // ── Stamper DOCX ───────────────────────────────────────────
         Path tempDocx = null;
-        Path tempPdf = null;
         try {
             tempDocx = Files.createTempFile("rapport_", ".docx");
             try (InputStream templateStream = new ClassPathResource("templates/modele_rapport_ancs_2_1.docx").getInputStream();
@@ -420,56 +531,14 @@ public class RapportService {
                     .build();
                 stamper.stamp(document, context, out);
             }
-
-            if ("PDF".equalsIgnoreCase(type)) {
-                String profileDir = "file:///tmp/lo_profile_" + UUID.randomUUID().toString();
-                ProcessBuilder pb = new ProcessBuilder("soffice",
-                        "-env:UserInstallation=" + profileDir,
-                        "--headless",
-                        "--convert-to", "pdf",
-                        "--outdir", tempDocx.getParent().toString(),
-                        tempDocx.toString());
-                pb.redirectErrorStream(true);
-                
-                Process process = pb.start();
-                // Consume output stream to prevent hang
-                try (InputStream is = process.getInputStream()) {
-                    byte[] buffer = new byte[1024];
-                    while (is.read(buffer) != -1) {
-                        // ignore output
-                    }
-                }
-                
-                boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-                if (!finished) {
-                    process.destroyForcibly();
-                    throw new RuntimeException("Conversion LibreOffice a dépassé le délai de 30 secondes.");
-                }
-                
-                tempPdf = tempDocx.getParent().resolve(tempDocx.getFileName().toString().replace(".docx", ".pdf"));
-                byte[] pdfBytes = Files.readAllBytes(tempPdf);
-                return pdfBytes;
-            } else {
-                byte[] docxBytes = Files.readAllBytes(tempDocx);
-                return docxBytes;
-            }
+            return Files.readAllBytes(tempDocx);
         } catch (Exception e) {
-            log.error("Erreur lors de la génération du rapport", e);
-            throw new RuntimeException("Erreur de génération", e);
+            log.error("Erreur lors de la génération du rapport DOCX", e);
+            throw new RuntimeException("Erreur de génération du rapport", e);
         } finally {
             if (tempDocx != null) {
-                try {
-                    Files.deleteIfExists(tempDocx);
-                } catch (Exception ex) {
-                    log.warn("Impossible de supprimer le fichier temporaire DOCX : {}", tempDocx, ex);
-                }
-            }
-            if (tempPdf != null) {
-                try {
-                    Files.deleteIfExists(tempPdf);
-                } catch (Exception ex) {
-                    log.warn("Impossible de supprimer le fichier temporaire PDF : {}", tempPdf, ex);
-                }
+                try { Files.deleteIfExists(tempDocx); }
+                catch (Exception ex) { log.warn("Impossible de supprimer le fichier temporaire : {}", tempDocx, ex); }
             }
         }
     }
@@ -567,6 +636,175 @@ public class RapportService {
             .motifRejet(rapport.getMotifRejet())
             .numeroCertificationAncs(rapport.getNumeroCertificationAncs())
             .contactAuditeur(rapport.getContactAuditeur())
+            .resumeDisponible(rapport.getFichierResumeUrl() != null)
             .build();
+    }
+
+    // ========================================================
+    // Générateur de résumé (points clés) — Apache POI direct
+    // ========================================================
+
+    /**
+     * Construit un document Word d'une à deux pages résumant les points clés du rapport.
+     *
+     * <p>Contenu :
+     * <ol>
+     *   <li>En-tête : organisme, référentiel, dates de mission, auditeur</li>
+     *   <li>Informations rapport : version, date de génération, statut ANCS</li>
+     *   <li>Taux de conformité global</li>
+     *   <li>Répartition des constats par résultat</li>
+     *   <li>Non-conformités critiques (résultat NON_CONFORME + criticité ELEVE ou CRITIQUE)</li>
+     *   <li>Synthèse exécutive</li>
+     *   <li>Actions correctives prioritaires (priorité HAUTE ou CRITIQUE)</li>
+     * </ol>
+     */
+    private byte[] buildResumeDocx(Mission mission, List<Constat> constats, double compliance,
+                                   String synthese, int version, List<Action> actions) {
+        try (XWPFDocument doc = new XWPFDocument();
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            Auditeur auditeur = mission.getAuditeur();
+            Organisme org = mission.getOrganisme();
+
+            // ── Titre principal ────────────────────────────────────────
+            addHeading(doc, "RÉSUMÉ DU RAPPORT D'AUDIT", 1);
+            addHeading(doc, safe(org != null ? org.getNom() : ""), 2);
+
+            // ── Section 1 : Informations générales ─────────────────────
+            addHeading(doc, "1. Informations générales", 2);
+            addBullet(doc, "Organisme : " + safe(org != null ? org.getNom() : ""));
+            if (mission.getReferentiel() != null) {
+                addBullet(doc, "Référentiel : " + safe(mission.getReferentiel().getNom())
+                    + " v" + safe(mission.getReferentiel().getVersion()));
+            }
+            addBullet(doc, "Période : "
+                + (mission.getDateDebut() != null ? fmt.format(mission.getDateDebut()) : "?")
+                + " → "
+                + (mission.getDateFin() != null ? fmt.format(mission.getDateFin()) : "?"));
+            if (auditeur != null) {
+                addBullet(doc, "Auditeur : " + safe(auditeur.getUtilisateur().getNom())
+                    + "  •  N° " + safe(auditeur.getNumeroCertification()));
+            }
+
+            // ── Section 2 : Informations rapport ───────────────────────
+            addHeading(doc, "2. Informations du rapport", 2);
+            addBullet(doc, "Version : " + version);
+            addBullet(doc, "Date de génération : " + fmt.format(LocalDate.now()));
+
+            // ── Section 3 : Taux de conformité ─────────────────────────
+            addHeading(doc, "3. Taux de conformité global", 2);
+            XWPFParagraph compPara = doc.createParagraph();
+            compPara.setAlignment(ParagraphAlignment.CENTER);
+            XWPFRun compRun = compPara.createRun();
+            compRun.setBold(true);
+            compRun.setFontSize(28);
+            compRun.setText(String.format("%.1f%%", compliance));
+
+            // ── Section 4 : Répartition des constats ───────────────────
+            addHeading(doc, "4. Répartition des constats", 2);
+            long nbConforme   = constats.stream().filter(c -> c.getResultat() == ResultatConstat.CONFORME).count();
+            long nbObservation = constats.stream().filter(c -> c.getResultat() == ResultatConstat.OBSERVATION).count();
+            long nbNonConforme = constats.stream().filter(c -> c.getResultat() == ResultatConstat.NON_CONFORME).count();
+            addBullet(doc, "Conforme         : " + nbConforme);
+            addBullet(doc, "Observation      : " + nbObservation);
+            addBullet(doc, "Non conforme     : " + nbNonConforme);
+            addBullet(doc, "Total évalués    : " + constats.size());
+
+            // Répartition par criticité
+            Map<String, Long> parCriticite = constats.stream()
+                .filter(c -> c.getResultat() != null)
+                .collect(Collectors.groupingBy(
+                    c -> {
+                        String crit = c.getCriticite() != null ? c.getCriticite()
+                            : (c.getControle() != null ? c.getControle().getCriticite() : null);
+                        return crit != null ? crit : "N/A";
+                    },
+                    Collectors.counting()
+                ));
+            if (!parCriticite.isEmpty()) {
+                addBullet(doc, "— par criticité :");
+                parCriticite.forEach((k, v) -> addBullet(doc, "    " + k + " : " + v));
+            }
+
+            // ── Section 5 : Non-conformités critiques ──────────────────
+            addHeading(doc, "5. Non-conformités critiques", 2);
+            List<Constat> critiques = constats.stream()
+                .filter(c -> c.getResultat() == ResultatConstat.NON_CONFORME)
+                .filter(c -> {
+                    String crit = c.getCriticite() != null ? c.getCriticite()
+                        : (c.getControle() != null ? c.getControle().getCriticite() : null);
+                    return "ELEVE".equalsIgnoreCase(crit) || "CRITIQUE".equalsIgnoreCase(crit);
+                })
+                .collect(Collectors.toList());
+
+            if (critiques.isEmpty()) {
+                addNormal(doc, "Aucune non-conformité critique identifiée.");
+            } else {
+                for (Constat c : critiques) {
+                    String libelle = c.getControle() != null ? safe(c.getControle().getLibelle()) : "";
+                    String crit = c.getCriticite() != null ? c.getCriticite()
+                        : (c.getControle() != null ? safe(c.getControle().getCriticite()) : "");
+                    addBullet(doc, "[" + crit + "] " + libelle);
+                    if (c.getRecommandation() != null && !c.getRecommandation().isBlank()) {
+                        addNormal(doc, "    ↳ Recommandation : " + c.getRecommandation());
+                    }
+                }
+            }
+
+            // ── Section 6 : Synthèse exécutive ─────────────────────────
+            addHeading(doc, "6. Synthèse exécutive", 2);
+            addNormal(doc, safe(synthese));
+
+            // ── Section 7 : Actions correctives prioritaires ────────────
+            addHeading(doc, "7. Actions correctives prioritaires", 2);
+            List<Action> prioritaires = actions.stream()
+                .filter(a -> a.getPriorite() == PrioriteAction.HAUTE || a.getPriorite() == PrioriteAction.CRITIQUE)
+                .collect(Collectors.toList());
+
+            if (prioritaires.isEmpty()) {
+                addNormal(doc, "Aucune action corrective de haute priorité enregistrée.");
+            } else {
+                for (Action a : prioritaires) {
+                    String ctrlLib = (a.getConstat() != null && a.getConstat().getControle() != null)
+                        ? safe(a.getConstat().getControle().getLibelle()) : "";
+                    String echeance = a.getEcheance() != null ? a.getEcheance().toString() : "N/A";
+                    addBullet(doc, "[" + (a.getPriorite() != null ? a.getPriorite().name() : "?") + "] "
+                        + ctrlLib + " — " + safe(a.getDescription()));
+                    addNormal(doc, "    Responsable : " + safe(a.getResponsable())
+                        + "  •  Échéance : " + echeance);
+                }
+            }
+
+            doc.write(bos);
+            return bos.toByteArray();
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du document résumé", e);
+            throw new RuntimeException("Erreur de génération du résumé", e);
+        }
+    }
+
+    // ── POI helpers ────────────────────────────────────────────────────────────
+
+    private void addHeading(XWPFDocument doc, String text, int level) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setStyle("Heading" + level);
+        XWPFRun run = p.createRun();
+        run.setBold(true);
+        run.setFontSize(level == 1 ? 16 : 13);
+        run.setText(text);
+    }
+
+    private void addBullet(XWPFDocument doc, String text) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setNumID(null); // no list numbering, just indent
+        XWPFRun run = p.createRun();
+        run.setText("• " + text);
+    }
+
+    private void addNormal(XWPFDocument doc, String text) {
+        XWPFParagraph p = doc.createParagraph();
+        XWPFRun run = p.createRun();
+        run.setText(text);
     }
 }

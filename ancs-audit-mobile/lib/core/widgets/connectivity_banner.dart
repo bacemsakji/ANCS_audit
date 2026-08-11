@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 
 /// Bannière de statut connectivité affichée en haut de l'écran
@@ -15,7 +16,7 @@ class ConnectivityBanner extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF7B2D00),
+      color: AppColors.offlineWarning,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.m,
         vertical: AppSpacing.xs,

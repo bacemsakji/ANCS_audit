@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.gov.ancs.audit.domain.Auditeur;
@@ -42,6 +43,11 @@ public class AuditeurService {
 
         if (auditeurRepository.existsByNumeroCertification(request.getNumeroCertification())) {
             throw new IllegalArgumentException("Ce numéro de certification est déjà enregistré");
+        }
+
+        if (request.getDateExpiration() != null && request.getDateCertification() != null && 
+            !request.getDateExpiration().isAfter(request.getDateCertification())) {
+            throw new IllegalArgumentException("La date d'expiration doit être ultérieure à la date de certification");
         }
 
         Auditeur auditeur = Auditeur.builder()
@@ -84,6 +90,7 @@ public class AuditeurService {
      * Tâche planifiée pour mettre à jour automatiquement les certifications expirées.
      */
     @Transactional
+    @Scheduled(cron = "0 0 1 * * *")
     public void verifyCertificationsExpiration() {
         LocalDate today = LocalDate.now();
         List<Auditeur> expirant = auditeurRepository.findActifsExpirantAvant(today);

@@ -86,6 +86,12 @@ public class UtilisateurService {
         Utilisateur user = utilisateurRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'id: " + id));
         
+        if (user.getRole() == Role.ADMIN_ANCS && user.getIsActive()) {
+            if (utilisateurRepository.countByRoleAndIsActiveTrue(Role.ADMIN_ANCS) <= 1) {
+                throw new IllegalStateException("Impossible de désactiver le dernier administrateur actif");
+            }
+        }
+
         user.setIsActive(!user.getIsActive());
         Utilisateur updatedUser = utilisateurRepository.save(user);
         log.info("Statut de l'utilisateur {} modifié: actif={}", updatedUser.getEmail(), updatedUser.getIsActive());

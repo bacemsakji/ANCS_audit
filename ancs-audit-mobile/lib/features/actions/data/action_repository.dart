@@ -4,6 +4,15 @@ class ActionRepository {
   final DioClient _dioClient;
   ActionRepository({required DioClient dioClient}) : _dioClient = dioClient;
 
+  Future<void> createAction(Map<String, dynamic> request) async {
+    await _dioClient.instance.post('/api/actions', data: request);
+  }
+
+  Future<List<dynamic>> getConstatsByMission(String missionId) async {
+    final response = await _dioClient.instance.get('/api/constats/mission/$missionId');
+    return response.data as List<dynamic>;
+  }
+
   Future<List<dynamic>> getActionsForMission(String missionId,
       {int page = 0}) async {
     final response = await _dioClient.instance.get(

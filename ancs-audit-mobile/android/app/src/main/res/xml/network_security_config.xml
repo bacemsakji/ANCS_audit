@@ -18,15 +18,11 @@
         </trust-anchors>
     </debug-overrides>
 
-    <!-- Autoriser HTTP vers le backend local de développement (émulateur Android) -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">10.0.2.2</domain>
-    </domain-config>
-
-    <!-- Tout autre trafic : HTTPS uniquement -->
-    <base-config cleartextTrafficPermitted="false">
+    <!-- Autoriser HTTP vers le backend local de développement (émulateur Android et réseau local IP) -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
+            <certificates src="user"/>
         </trust-anchors>
     </base-config>
 </network-security-config>

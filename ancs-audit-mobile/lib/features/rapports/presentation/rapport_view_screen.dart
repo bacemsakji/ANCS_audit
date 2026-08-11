@@ -37,8 +37,10 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
   List<Map<String, dynamic>> _rapports = [];
   bool _isLoading = true;
   String? _error;
-  // Track which rapport is currently downloading
+  // Track which rapport is currently downloading (full report)
   String? _downloadingId;
+  // Track which rapport résumé is currently downloading
+  String? _downloadingResumeId;
 
   @override
   void initState() {
@@ -81,6 +83,75 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
       _showSnack('Erreur : $e', isError: true);
     } finally {
       if (mounted) setState(() => _downloadingId = null);
+    }
+  }
+
+  Future<void> _downloadResume(String rapportId) async {
+    setState(() => _downloadingResumeId = rapportId);
+    try {
+      final url = await widget.repository.getResumeDownloadUrl(rapportId);
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnack('Impossible d\'ouvrir le lien de téléchargement du résumé.', isError: true);
+      }
+    } catch (e) {
+      _showSnack('Erreur : $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _downloadingResumeId = null);
+    }
+  }
+
+  Future<void> _soumettre(String rapportId) async {
+    try {
+      await widget.repository.soumettre(rapportId);
+      _showSnack('Rapport soumis avec succès à l\'ANCS.');
+      _load();
+    } catch (e) {
+      _showSnack('Erreur lors de la soumission : $e', isError: true);
+    }
+  }
+
+  Future<void> _accepter(String rapportId) async {
+    try {
+      await widget.repository.accepter(rapportId);
+      _showSnack('Rapport accepté avec succès.');
+      _load();
+    } catch (e) {
+      _showSnack('Erreur lors de l\'acceptation : $e', isError: true);
+    }
+  }
+
+  Future<void> _rejeter(String rapportId) async {
+    final motifController = TextEditingController();
+    final motif = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rejeter le rapport'),
+        content: TextField(
+          controller: motifController,
+          decoration: const InputDecoration(hintText: 'Motif du rejet (obligatoire)'),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, motifController.text.trim()),
+            child: const Text('Rejeter', style: TextStyle(color: AppColors.nonConforme)),
+          ),
+        ],
+      ),
+    );
+
+    if (motif == null || motif.isEmpty) return;
+
+    try {
+      await widget.repository.rejeter(rapportId, motif);
+      _showSnack('Rapport rejeté avec succès.');
+      _load();
+    } catch (e) {
+      _showSnack('Erreur lors du rejet : $e', isError: true);
     }
   }
 
@@ -182,6 +253,7 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
     final String type = rapport['type'] ?? 'PDF';
     final String statut = rapport['statutSoumissionAncs'] ?? 'NON_SOUMIS';
     final bool iaUsed = rapport['syntheseGenereeParIa'] == true;
+    final bool resumeDisponible = rapport['resumeDisponible'] == true;
     final String? auditeur = rapport['auditeurNom'];
     final String? organisme = rapport['organismeNom'];
     final String? dateStr = rapport['dateGeneration']?.toString();
@@ -298,8 +370,8 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
                           label: const Text('Télécharger'),
                         ),
                 ),
-                // Modifier button — only for AUDITEUR and ADMIN, only if missionId known
-                if (canEdit && widget.missionId != null) ...[
+                // Modifier button — only for AUDITEUR and ADMIN, only if missionId known and not SOUMIS/ACCEPTE
+                if (canEdit && widget.missionId != null && (statut == 'NON_SOUMIS' || statut == 'REJETE')) ...[
                   const SizedBox(width: AppSpacing.s),
                   Expanded(
                     child: ElevatedButton.icon(
@@ -317,6 +389,80 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
                 ],
               ],
             ),
+            // Résumé download row — only shown when the summary document is available
+            if (resumeDisponible) ...[
+              const SizedBox(height: AppSpacing.s),
+              SizedBox(
+                width: double.infinity,
+                child: _downloadingResumeId == id
+                    ? const Center(
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColors.primary),
+                        ),
+                      )
+                    : OutlinedButton.icon(
+                        onPressed: id.isNotEmpty ? () => _downloadResume(id) : null,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.textSecondary, width: 1),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.summarize_outlined, size: 18),
+                        label: const Text('Télécharger le résumé'),
+                      ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.s),
+            if (widget.userRole == 'AUDITEUR' && (statut == 'NON_SOUMIS' || statut == 'REJETE')) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _soumettre(id),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.send),
+                  label: const Text('Soumettre à l\'ANCS'),
+                ),
+              ),
+            ],
+            if (widget.userRole == 'ADMIN_ANCS' && statut == 'SOUMIS') ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _accepter(id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.conforme,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Accepter'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _rejeter(id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.nonConforme,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.close),
+                      label: const Text('Rejeter'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

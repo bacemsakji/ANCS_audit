@@ -12,6 +12,7 @@ import tn.gov.ancs.audit.domain.Mission;
 import tn.gov.ancs.audit.domain.Organisme;
 import tn.gov.ancs.audit.domain.Referentiel;
 import tn.gov.ancs.audit.domain.enums.Role;
+import tn.gov.ancs.audit.domain.enums.StatutAuditeur;
 import tn.gov.ancs.audit.domain.enums.StatutMission;
 import tn.gov.ancs.audit.domain.enums.TypeReferentiel;
 import tn.gov.ancs.audit.dto.request.CreateMissionRequest;
@@ -43,6 +44,10 @@ public class MissionService {
 
         Auditeur auditeur = auditeurRepository.findById(request.getAuditeurId())
             .orElseThrow(() -> new ResourceNotFoundException("Auditeur non trouvé avec l'id: " + request.getAuditeurId()));
+
+        if (auditeur.getStatut() != StatutAuditeur.ACTIF) {
+            throw new IllegalStateException("Impossible d'assigner une mission à un auditeur dont la certification est expirée ou suspendue");
+        }
 
         Referentiel referentiel = referentielRepository.findById(request.getReferentielId())
             .orElseThrow(() -> new ResourceNotFoundException("Référentiel non trouvé avec l'id: " + request.getReferentielId()));

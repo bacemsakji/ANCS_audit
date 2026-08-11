@@ -19,4 +19,6 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, UUID> 
     List<Utilisateur> findByRole(Role role);
 
     List<Utilisateur> findByOrganismeId(UUID organismeId);
+
+    long countByRoleAndIsActiveTrue(Role role);
 }

@@ -5,9 +5,9 @@
 -- Deduplicate any existing reports with duplicate (mission_id, version) before adding constraint
 DELETE FROM rapport 
 WHERE id NOT IN (
-    SELECT MAX(id) 
+    SELECT DISTINCT ON (mission_id, version) id
     FROM rapport 
-    GROUP BY mission_id, version
+    ORDER BY mission_id, version, created_at DESC
 );
 
 ALTER TABLE organisme ADD COLUMN IF NOT EXISTS acronyme VARCHAR(50);

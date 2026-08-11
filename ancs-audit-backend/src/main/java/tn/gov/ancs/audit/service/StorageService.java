@@ -94,15 +94,15 @@ public class StorageService {
     /**
      * Téléverse un flux d'entrée (ex. rapport généré) dans le bucket des rapports.
      */
-    public String uploadRapport(String filename, InputStream inputStream, String contentType) {
+    public String uploadRapport(String filename, byte[] fileBytes, String contentType) {
         String safeName = sanitizeFilename(filename);
         String objectName = UUID.randomUUID() + "_" + safeName;
-        try {
+        try (InputStream inputStream = new java.io.ByteArrayInputStream(fileBytes)) {
             minioClient.putObject(
                 PutObjectArgs.builder()
                     .bucket(rapportsBucket)
                     .object(objectName)
-                    .stream(inputStream, inputStream.available(), -1)
+                    .stream(inputStream, fileBytes.length, -1)
                     .contentType(contentType)
                     .build()
             );

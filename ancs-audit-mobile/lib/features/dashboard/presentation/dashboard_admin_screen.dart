@@ -5,6 +5,11 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/conformite_gauge.dart';
 import '../../../core/widgets/shimmer_card.dart';
 import '../data/dashboard_repository.dart';
+import '../../organismes/data/organisme_repository.dart';
+import '../../organismes/presentation/create_organisme_screen.dart';
+import '../../auditeurs/data/auditeur_repository.dart';
+import '../../auditeurs/presentation/certify_auditeur_screen.dart';
+import '../../../core/network/dio_client.dart';
 
 class DashboardAdminScreen extends StatefulWidget {
   final DashboardRepository repository;
@@ -69,6 +74,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                     children: [
                       _buildKpiGrid(),
                       const SizedBox(height: AppSpacing.m),
+                      _buildActionsRapides(),
+                      const SizedBox(height: AppSpacing.m),
                       _buildConformiteCard(),
                       const SizedBox(height: AppSpacing.m),
                       _buildAlertesCertification(),
@@ -106,7 +113,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
           label: 'Organismes',
           value: '${d['totalOrganismes'] ?? 0}',
           icon: Icons.business_outlined,
-          color: const Color(0xFF455A64),
+          color: AppColors.neutralIcon,
         ),
         _KpiCard(
           label: 'Auditeurs actifs',
@@ -115,6 +122,65 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
           color: AppColors.conforme,
         ),
       ],
+    );
+  }
+
+  Widget _buildActionsRapides() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Actions rapides', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.m),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.business),
+                  label: const Text('Nouvel organisme'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateOrganismeScreen(
+                          repository: OrganismeRepository(dioClient: DioClient()),
+                        ),
+                      ),
+                    ).then((_) => _load());
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.m),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.verified_user),
+                  label: const Text('Certifier auditeur'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CertifyAuditeurScreen(
+                          repository: AuditeurRepository(dioClient: DioClient()),
+                        ),
+                      ),
+                    ).then((_) => _load());
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -183,16 +249,52 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
   }
 
   Widget _buildError() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cloud_off,
-                size: 48, color: AppColors.textSecondary),
-            const SizedBox(height: AppSpacing.m),
-            Text('Données non disponibles',
-                style: Theme.of(context).textTheme.titleMedium),
-            TextButton(onPressed: _load, child: const Text('Réessayer')),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.l),
+          child: AppCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.m),
+                  decoration: BoxDecoration(
+                    color: AppColors.nonConformeBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.cloud_off,
+                      size: 40, color: AppColors.nonConforme),
+                ),
+                const SizedBox(height: AppSpacing.m),
+                Text(
+                  'Données non disponibles',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  _error ?? 'Impossible de se connecter au serveur.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.l),
+                ElevatedButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Réessayer'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.l, vertical: AppSpacing.m),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }

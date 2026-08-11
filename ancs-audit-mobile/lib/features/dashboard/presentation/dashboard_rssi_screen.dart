@@ -244,12 +244,20 @@ class _PriorityDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (priorite.toUpperCase()) {
-      'CRITIQUE' => AppColors.prioriteCritique,
-      'HAUTE' => AppColors.prioriteHaute,
-      'MOYENNE' => AppColors.prioriteMoyenne,
-      _ => AppColors.prioriteFaible,
-    };
+    Color color;
+    switch (priorite.toUpperCase()) {
+      case 'CRITIQUE':
+        color = AppColors.prioriteCritique;
+        break;
+      case 'HAUTE':
+        color = AppColors.prioriteHaute;
+        break;
+      case 'MOYENNE':
+        color = AppColors.prioriteMoyenne;
+        break;
+      default:
+        color = AppColors.prioriteFaible;
+    }
     return Container(
       width: 10,
       height: 10,

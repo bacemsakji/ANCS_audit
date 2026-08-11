@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/dio_client.dart';
 
 class RapportRepository {
@@ -38,6 +37,13 @@ class RapportRepository {
     return response.data['downloadUrl'] as String;
   }
 
+  /// Obtient l'URL de téléchargement pré-signée (MinIO) pour le résumé (points clés) d'un rapport.
+  /// Lève une exception si aucun résumé n'est disponible (rapport antérieur à la fonctionnalité).
+  Future<String> getResumeDownloadUrl(String rapportId) async {
+    final response = await _dioClient.instance.get('/api/rapports/$rapportId/download-resume');
+    return response.data['downloadUrl'] as String;
+  }
+
   /// Liste tous les rapports d'une mission (toutes versions, ordre DESC).
   /// Accessible à l'auditeur assigné et à l'admin.
   Future<List<Map<String, dynamic>>> getRapportsByMission(String missionId) async {
@@ -56,6 +62,21 @@ class RapportRepository {
   /// Soumet le rapport officielement à l'ANCS pour validation.
   Future<Map<String, dynamic>> soumettre(String rapportId) async {
     final response = await _dioClient.instance.post('/api/rapports/$rapportId/soumettre');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Accepte le rapport par l'ADMIN_ANCS
+  Future<Map<String, dynamic>> accepter(String rapportId) async {
+    final response = await _dioClient.instance.post('/api/rapports/$rapportId/accepter');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Rejette le rapport par l'ADMIN_ANCS avec un motif
+  Future<Map<String, dynamic>> rejeter(String rapportId, String motifRejet) async {
+    final response = await _dioClient.instance.post(
+      '/api/rapports/$rapportId/rejeter',
+      data: {'motifRejet': motifRejet},
+    );
     return response.data as Map<String, dynamic>;
   }
 }

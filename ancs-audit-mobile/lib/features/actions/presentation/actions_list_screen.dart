@@ -5,6 +5,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/shimmer_card.dart';
 import '../data/action_repository.dart';
+import 'create_action_screen.dart';
 
 class ActionsListScreen extends StatefulWidget {
   final ActionRepository repository;
@@ -123,6 +124,25 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
                         },
                       ),
                     ),
+      floatingActionButton: widget.missionId != null && (widget.userRole == 'RSSI' || widget.userRole == 'AUDITEUR')
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CreateActionScreen(
+                      repository: widget.repository,
+                      missionId: widget.missionId!,
+                    ),
+                  ),
+                ).then((value) {
+                  if (value == true) _loadActions();
+                });
+              },
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
     );
   }
 

@@ -93,6 +93,31 @@ public class RapportController {
     }
 
     /**
+     * Récupère le lien de téléchargement pré-signé pour le résumé (points clés) d'un rapport.
+     * Renvoie 404 si aucun résumé n'a été généré (rapport antérieur à la fonctionnalité).
+     */
+    @GetMapping("/{id}/download-resume")
+    @PreAuthorize("hasAnyRole('ADMIN_ANCS', 'AUDITEUR', 'RSSI')")
+    public ResponseEntity<Map<String, String>> downloadResume(
+            @PathVariable("id") UUID id,
+            Authentication authentication) {
+
+        Utilisateur user = utilisateurRepository.findByEmailIgnoreCase(authentication.getName())
+            .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecté non trouvé"));
+
+        UUID orgId = user.getOrganisme() != null ? user.getOrganisme().getId() : null;
+
+        String downloadUrl = rapportService.getRapportResumeDownloadUrl(
+            id, user.getEmail(), user.getRole(), orgId
+        );
+
+        Map<String, String> response = new HashMap<>();
+        response.put("downloadUrl", downloadUrl);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Liste tous les rapports d'une mission donnée (toutes versions).
      * Rôle requis : AUDITEUR (assigné) ou ADMIN_ANCS.
      */

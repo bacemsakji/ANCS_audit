@@ -26,4 +26,6 @@ public class RapportResponse {
     private String motifRejet;
     private String numeroCertificationAncs;
     private String contactAuditeur;
+    /** {@code true} si un document résumé (points clés) est disponible au téléchargement. */
+    private boolean resumeDisponible;
 }

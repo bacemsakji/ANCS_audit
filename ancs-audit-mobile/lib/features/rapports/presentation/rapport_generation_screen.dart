@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -27,7 +28,6 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
   bool _isGeneratingIa = false;
   bool _isIaGenerated = false;
   bool _isGeneratingReport = false;
-  String _selectedFormat = 'PDF';
   String? _message;
 
   @override
@@ -75,7 +75,7 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
     try {
       final rapportData = await widget.repository.generateRapport(
         missionId: widget.missionId,
-        type: _selectedFormat,
+        type: 'DOCX',
         syntheseExecutive: _syntheseController.text,
         isIaGenerated: _isIaGenerated,
       );
@@ -96,9 +96,29 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
         context.pop(); // return to RapportViewScreen
       }
     } catch (e) {
+      String errorMsg;
+      if (e is DioException) {
+        if (e.response != null) {
+          // The backend replied with an HTTP error — extract its message
+          final data = e.response!.data;
+          if (data is Map && data.containsKey('message')) {
+            errorMsg = data['message'] as String;
+          } else {
+            errorMsg = 'Erreur serveur (${e.response!.statusCode}) : ${e.response!.statusMessage}';
+          }
+        } else {
+          // No response received — likely a CORS block or backend unreachable
+          errorMsg =
+              'Impossible de joindre le serveur (${e.type.name}).\n'
+              'Vérifiez que le backend est démarré sur http://localhost:8081 '
+              'et que la configuration CORS est correcte.';
+        }
+      } else {
+        errorMsg = e.toString();
+      }
       setState(() {
         _isGeneratingReport = false;
-        _message = 'Erreur lors de la génération du rapport : $e';
+        _message = 'Erreur lors de la génération du rapport : $errorMsg';
       });
     }
   }
@@ -188,38 +208,23 @@ class _RapportGenerationScreenState extends State<RapportGenerationScreen> {
             ),
             const SizedBox(height: AppSpacing.m),
 
-            // Format & Compilations
+            // Compilation
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Format d\'exportation', style: Theme.of(context).textTheme.titleMedium),
-                  Row(
-                    children: [
-                      Radio<String>(
-                        value: 'PDF',
-                        groupValue: _selectedFormat,
-                        onChanged: (v) => setState(() => _selectedFormat = v!),
-                      ),
-                      const Text('PDF (Document officiel ANCS)'),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Radio<String>(
-                        value: 'DOCX',
-                        groupValue: _selectedFormat,
-                        onChanged: (v) => setState(() => _selectedFormat = v!),
-                      ),
-                      const Text('Word (DOCX — modifiable)'),
-                    ],
+                  Text('Générer le rapport', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.s),
+                  Text(
+                    'Le rapport sera généré au format Word (DOCX) et téléversé sur le serveur.',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const Divider(height: AppSpacing.l),
                   _isGeneratingReport
                       ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                       : PrimaryButton(
-                          label: 'Compiler le rapport final',
-                          icon: Icons.document_scanner_outlined,
+                          label: 'Compiler le rapport (DOCX)',
+                          icon: Icons.description_outlined,
                           onPressed: _compileReport,
                         ),
                 ],
