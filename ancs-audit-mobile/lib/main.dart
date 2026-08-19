@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -72,22 +73,25 @@ class AncsAuditApp extends StatefulWidget {
 class _AncsAuditAppState extends State<AncsAuditApp> {
   late Locale _locale;
   late final SyncService _syncService;
+  late final AuthBloc _authBloc;
+  late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
     _locale = Locale(widget.initialLocaleCode);
-    // SyncService reçoit le même DioClient que le reste de l'application —
-    // la synchronisation arrière-plan cible exactement la même URL que l'UI.
     _syncService = SyncService(
       database: widget.appDatabase,
       dioClient: widget.dioClient,
     );
+    _authBloc = AuthBloc(authRepository: widget.authRepository)..add(AppStarted());
+    _router = _buildRouter();
   }
 
   @override
   void dispose() {
     _syncService.dispose();
+    _authBloc.close();
     super.dispose();
   }
 
@@ -95,27 +99,24 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => AuthBloc(authRepository: widget.authRepository)..add(AppStarted()),
-      child: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, authState) {
-          return MaterialApp.router(
-            title: _isArabic ? 'تدقيق ANCS' : 'ANCS Audit',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.buildTheme(_isArabic),
-            locale: _locale,
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            routerConfig: _buildRouter(context, authState),
-          );
-        },
+    return BlocProvider<AuthBloc>.value(
+      value: _authBloc,
+      child: MaterialApp.router(
+        title: _isArabic ? 'تدقيق ANCS' : 'ANCS Audit',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.buildTheme(_isArabic),
+        locale: _locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        routerConfig: _router,
       ),
     );
   }
 
-  GoRouter _buildRouter(BuildContext ctx, AuthState authState) {
+  GoRouter _buildRouter() {
     return GoRouter(
-      initialLocation: authState is AuthAuthenticated ? '/dashboard' : '/login',
+      initialLocation: '/login',
+      refreshListenable: GoRouterRefreshStream(_authBloc.stream),
       routes: [
         GoRoute(
           path: '/login',
@@ -153,6 +154,7 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
           path: '/missions/:id',
           builder: (context, state) {
             final mission = state.extra as Map<String, dynamic>? ?? {};
+            final authState = _authBloc.state;
             final userRole = authState is AuthAuthenticated ? authState.role : 'AUDITEUR';
             return MissionDetailScreen(mission: mission, userRole: userRole);
           },
@@ -164,7 +166,6 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
             final mission = state.extra as Map<String, dynamic>? ?? {};
             final referentielId = (mission['referentielId'] ?? '').toString();
 
-            // Le DioClient partagé est réutilisé — pas de nouvelle instance ici.
             return ChecklistScreen(
               missionId: missionId,
               referentielId: referentielId,
@@ -175,20 +176,18 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
               referentielRepository:
                   ReferentielRepository(dioClient: widget.dioClient),
               missionRepository: MissionRepository(dioClient: widget.dioClient),
-              isOnline: true, // par défaut connecté en test
+              isOnline: true,
             );
           },
         ),
 
-        // ─── Rapport : Vue consultation (toutes versions) ─────────────────────
-        // Route principale vers laquelle pointent tous les boutons "Voir rapport"
-        // de l'Admin, de l'Auditeur et du RSSI (via /rapport/organisme).
         GoRoute(
           path: '/missions/:id/rapport',
           builder: (context, state) {
             final missionId = state.pathParameters['id']!;
             final mission = state.extra as Map<String, dynamic>? ?? {};
             final orgNom = (mission['organismeNom'] ?? 'Organisme') as String;
+            final authState = _authBloc.state;
             final userRole =
                 authState is AuthAuthenticated ? authState.role : 'AUDITEUR';
 
@@ -201,8 +200,6 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
           },
         ),
 
-        // ─── Rapport : Génération / Modification (nouvelle version) ───────────
-        // Accessible uniquement depuis RapportViewScreen via le bouton "Modifier".
         GoRoute(
           path: '/missions/:id/rapport/nouveau',
           builder: (context, state) {
@@ -218,12 +215,12 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
           },
         ),
 
-        // ─── Rapport : Vue RSSI (par organisme, sans missionId) ───────────────
         GoRoute(
           path: '/rapport/organisme',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             final orgNom = (extra['organismeNom'] ?? 'Mon organisme') as String;
+            final authState = _authBloc.state;
             final userRole =
                 authState is AuthAuthenticated ? authState.role : 'RSSI';
 
@@ -237,12 +234,32 @@ class _AncsAuditAppState extends State<AncsAuditApp> {
         ),
       ],
       redirect: (context, state) {
+        final authState = _authBloc.state;
         final authenticated = authState is AuthAuthenticated;
-        final loggingIn = state.matchedLocation.startsWith('/login');
-        if (!authenticated && !loggingIn) return '/login';
-        if (authenticated && loggingIn) return '/dashboard';
+        final on2fa = state.matchedLocation == '/login/2fa';
+        final loggingIn = state.matchedLocation == '/login';
+
+        if (authenticated && (loggingIn || on2fa)) return '/dashboard';
+        if (!authenticated && !loggingIn && !on2fa) return '/login';
         return null;
       },
     );
   }
 }
+
+/// Adapts a [Stream] to a [ChangeNotifier] so GoRouter can listen to
+/// auth state changes and re-evaluate its redirect logic.
+class GoRouterRefreshStream extends ChangeNotifier {
+  late final StreamSubscription<dynamic> _subscription;
+
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+

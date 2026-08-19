@@ -1,0 +1,52 @@
+# ============================================================
+# Render Blueprint — ANCS Audit Backend & PostgreSQL
+# ============================================================
+# Import this repository into Render (New + -> Blueprint)
+# Render will provision the PostgreSQL database and Docker web service automatically.
+# ============================================================
+
+version: "1"
+
+services:
+  - type: web
+    name: ancs-audit-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    context: .
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: 8080
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_CORS_ALLOWED_ORIGINS
+        value: "*"
+      - key: DB_HOST
+        fromDatabase:
+          name: ancs-audit-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ancs-audit-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ancs-audit-db
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ancs-audit-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ancs-audit-db
+          property: password
+
+databases:
+  - name: ancs-audit-db
+    databaseName: ancs_audit
+    user: ancs_user
+    plan: free

@@ -69,12 +69,6 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Missions d\'Audit'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadMissions,
-          ),
-        ],
       ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(

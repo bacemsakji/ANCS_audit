@@ -56,9 +56,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Tableau de Bord — Administration'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
       ),
       body: _isLoading
           ? const Padding(
@@ -95,7 +92,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: AppSpacing.m,
       mainAxisSpacing: AppSpacing.m,
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.25,
       children: [
         _KpiCard(
           label: 'Missions en cours',
@@ -136,12 +133,15 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.business),
-                  label: const Text('Nouvel organisme'),
+                  icon: const Icon(Icons.business, size: 18),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Nouvel organisme'),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -155,15 +155,18 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: AppSpacing.m),
+              const SizedBox(width: AppSpacing.s),
               Expanded(
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.verified_user),
-                  label: const Text('Certifier auditeur'),
+                  icon: const Icon(Icons.verified_user, size: 18),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Certifier auditeur'),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -315,29 +318,31 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.m),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 28),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+          Icon(icon, color: color, size: 24),
+          const Spacer(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall,
-                maxLines: 2,
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

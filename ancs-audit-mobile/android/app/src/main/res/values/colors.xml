@@ -3,4 +3,5 @@
     <!-- ANCS institutional colors -->
     <color name="primary_color">#002B5B</color>
     <color name="background_color">#FFFFFF</color>
+	<color name="ic_launcher_background">#FFFFFF</color>
 </resources>

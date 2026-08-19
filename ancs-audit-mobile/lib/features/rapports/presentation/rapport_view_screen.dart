@@ -6,6 +6,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_buttons.dart';
 import '../../../core/widgets/shimmer_card.dart';
+import '../../../core/network/dio_client.dart';
 import '../data/rapport_repository.dart';
 
 /// Écran de consultation des rapports d'une mission.
@@ -69,10 +70,23 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
     }
   }
 
+  String _resolveUrlForDevice(String rawUrl) {
+    if (rawUrl.isEmpty) return rawUrl;
+    final baseHost = Uri.tryParse(kBaseUrl)?.host;
+    if (baseHost != null && baseHost.isNotEmpty) {
+      return rawUrl
+          .replaceAll('http://localhost:', 'http://$baseHost:')
+          .replaceAll('http://127.0.0.1:', 'http://$baseHost:')
+          .replaceAll('http://10.0.2.2:', 'http://$baseHost:');
+    }
+    return rawUrl;
+  }
+
   Future<void> _download(String rapportId) async {
     setState(() => _downloadingId = rapportId);
     try {
-      final url = await widget.repository.getDownloadUrl(rapportId);
+      final rawUrl = await widget.repository.getDownloadUrl(rapportId);
+      final url = _resolveUrlForDevice(rawUrl);
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -89,7 +103,8 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
   Future<void> _downloadResume(String rapportId) async {
     setState(() => _downloadingResumeId = rapportId);
     try {
-      final url = await widget.repository.getResumeDownloadUrl(rapportId);
+      final rawUrl = await widget.repository.getResumeDownloadUrl(rapportId);
+      final url = _resolveUrlForDevice(rawUrl);
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -204,13 +219,6 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
               ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualiser',
-            onPressed: _load,
-          ),
-        ],
       ),
       // FAB: only AUDITEUR and ADMIN can create a new version
       floatingActionButton: canEdit && widget.missionId != null
@@ -363,11 +371,15 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             side: const BorderSide(color: AppColors.primary, width: 1.5),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8)),
                           ),
                           icon: const Icon(Icons.download_for_offline_outlined, size: 18),
-                          label: const Text('Télécharger'),
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Télécharger'),
+                          ),
                         ),
                 ),
                 // Modifier button — only for AUDITEUR and ADMIN, only if missionId known and not SOUMIS/ACCEPTE
@@ -379,11 +391,15 @@ class _RapportViewScreenState extends State<RapportViewScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accent,
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
                       icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Modifier'),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('Modifier'),
+                      ),
                     ),
                   ),
                 ],

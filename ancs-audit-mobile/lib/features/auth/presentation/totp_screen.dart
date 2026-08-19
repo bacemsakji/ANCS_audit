@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
@@ -9,11 +10,6 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/app_buttons.dart';
 
 /// Écran de vérification TOTP (2FA) pour les administrateurs ANCS.
-///
-/// Reçoit [mfaToken] — un jeton intermédiaire signé côté serveur,
-/// ce qui prouve que le mot de passe a déjà été validé à l'étape précédente.
-/// L'email n'est affiché qu'à titre informatif, et jamais envoyé au serveur
-/// lors de la validation du code TOTP.
 class TotpScreen extends StatefulWidget {
   final String email;
   final String mfaToken;
@@ -44,21 +40,66 @@ class _TotpScreenState extends State<TotpScreen> {
 
   void _submit() {
     if (_code.length != 6) return;
-    // SÉCURITÉ : on passe mfaToken et non l'email — le serveur valide
-    // la signature du token avant d'accepter le code TOTP.
     context.read<AuthBloc>().add(
           TotpSubmitted(mfaToken: widget.mfaToken, code: _code),
         );
   }
 
+  void _onChanged(String value, int index) {
+    final cleanValue = value.replaceAll(RegExp(r'\D'), '');
+
+    // Gestion du collé (paste code à 6 chiffres ou multi-chiffres)
+    if (cleanValue.length > 1) {
+      final startIdx = (cleanValue.length == 6) ? 0 : index;
+      for (int j = 0; j < 6; j++) {
+        final charIdx = j - startIdx;
+        if (charIdx >= 0 && charIdx < cleanValue.length) {
+          _controllers[j].text = cleanValue[charIdx];
+        }
+      }
+      final nextFocus = (startIdx + cleanValue.length).clamp(0, 5);
+      _focusNodes[nextFocus].requestFocus();
+      if (_code.length == 6) _submit();
+      return;
+    }
+
+    // Si la case contenait déjà un chiffre et qu'un nouveau est tapé, garder le dernier
+    if (value.length > 1) {
+      _controllers[index].text = value.substring(value.length - 1);
+      _controllers[index].selection =
+          TextSelection.collapsed(offset: _controllers[index].text.length);
+    }
+
+    // Auto-avance vers le champ suivant
+    if (_controllers[index].text.isNotEmpty && index < 5) {
+      _focusNodes[index + 1].requestFocus();
+    }
+
+    // Soumission automatique quand 6 chiffres sont saisis
+    if (_code.length == 6) {
+      _submit();
+    }
+  }
+
+  void _handleKeyEvent(KeyEvent event, int index) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace) {
+      if (_controllers[index].text.isEmpty && index > 0) {
+        _controllers[index - 1].clear();
+        _focusNodes[index - 1].requestFocus();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           context.go('/dashboard');
         } else if (state is AuthError) {
-          // Vider les champs et afficher l'erreur
           for (final c in _controllers) c.clear();
           _focusNodes[0].requestFocus();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -81,42 +122,46 @@ class _TotpScreenState extends State<TotpScreen> {
           ),
         ),
         body: SafeArea(
-          child: Column(
-            children: [
-              // En-tête
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
-                child: Column(
-                  children: [
-                    const Icon(Icons.shield_outlined,
-                        color: Colors.white, size: 48),
-                    const SizedBox(height: AppSpacing.m),
-                    const Text(
-                      'Vérification de sécurité',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // En-tête
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.shield_outlined,
+                          color: Colors.white, size: 44),
+                      const SizedBox(height: AppSpacing.s),
+                      const Text(
+                        'Vérification de sécurité',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Saisissez le code à 6 chiffres généré par votre application d\'authentification (Google Authenticator).',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
-                        height: 1.5,
+                      const SizedBox(height: 6),
+                      Text(
+                        'Saisissez le code à 6 chiffres envoyé à votre application d\'authentification.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 36),
+                const SizedBox(height: 24),
 
-              // Panneau blanc
-              Expanded(
-                child: Container(
+                // Panneau blanc avec contrainte minimale de hauteur
+                Container(
+                  constraints: BoxConstraints(
+                    minHeight: screenHeight * 0.6,
+                  ),
                   decoration: const BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.only(
@@ -127,7 +172,7 @@ class _TotpScreenState extends State<TotpScreen> {
                   padding: const EdgeInsets.all(AppSpacing.l),
                   child: Column(
                     children: [
-                      const SizedBox(height: AppSpacing.l),
+                      const SizedBox(height: AppSpacing.s),
                       Text(
                         widget.email,
                         style: const TextStyle(
@@ -138,51 +183,51 @@ class _TotpScreenState extends State<TotpScreen> {
                       ),
                       const SizedBox(height: AppSpacing.l),
 
-                      // Grille OTP 6 cases
+                      // Grille OTP 6 cases fluides
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(6, (i) {
                           return Container(
-                            width: 46,
-                            height: 56,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            child: TextField(
-                              controller: _controllers[i],
-                              focusNode: _focusNodes[i],
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              maxLength: 1,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                              decoration: InputDecoration(
-                                counterText: '',
-                                filled: true,
-                                fillColor: AppColors.surface,
-                                contentPadding: EdgeInsets.zero,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(
-                                      color: AppColors.divider),
+                            width: 42,
+                            height: 52,
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 3),
+                            child: KeyboardListener(
+                              focusNode: FocusNode(),
+                              onKeyEvent: (event) => _handleKeyEvent(event, i),
+                              child: TextField(
+                                controller: _controllers[i],
+                                focusNode: _focusNodes[i],
+                                textAlign: TextAlign.center,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.primary,
-                                    width: 2,
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  filled: true,
+                                  fillColor: AppColors.surface,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                        color: AppColors.divider),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 2,
+                                    ),
                                   ),
                                 ),
+                                onChanged: (value) => _onChanged(value, i),
                               ),
-                              onChanged: (value) {
-                                if (value.isNotEmpty && i < 5) {
-                                  _focusNodes[i + 1].requestFocus();
-                                } else if (value.isEmpty && i > 0) {
-                                  _focusNodes[i - 1].requestFocus();
-                                }
-                                if (_code.length == 6) _submit();
-                              },
                             ),
                           );
                         }),
@@ -197,14 +242,16 @@ class _TotpScreenState extends State<TotpScreen> {
                           onPressed: _submit,
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.l),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

@@ -136,7 +136,15 @@ class _MainScreenState extends State<MainScreen> {
           appBar: AppBar(
             title: Row(
               children: [
-                const Icon(Icons.security, size: 22, color: Colors.white),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.asset(
+                    'assets/images/logo--ancs.png',
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.contain,
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.s),
                 Expanded(
                   child: Column(

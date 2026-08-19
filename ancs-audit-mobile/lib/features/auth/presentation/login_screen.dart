@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -24,6 +25,30 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('saved_email');
+    final savedPassword = prefs.getString('saved_password');
+    if (savedEmail != null && savedEmail.isNotEmpty) {
+      _emailController.text = savedEmail;
+    }
+    if (savedPassword != null && savedPassword.isNotEmpty) {
+      _passwordController.text = savedPassword;
+    }
+  }
+
+  Future<void> _saveCredentials(String email, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_email', email);
+    await prefs.setString('saved_password', password);
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -32,10 +57,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    _saveCredentials(email, password);
+
     context.read<AuthBloc>().add(LoginSubmitted(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
+      email: email,
+      password: password,
     ));
+  }
+
+  void _fillAccount(String email, String password) {
+    setState(() {
+      _emailController.text = email;
+      _passwordController.text = password;
+    });
+    _saveCredentials(email, password);
   }
 
   @override
@@ -72,21 +109,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Image.asset(
                         'assets/images/logo--ancs.png',
-                        width: 72,
-                        height: 72,
+                        width: 110,
+                        height: 110,
                       ),
                       const SizedBox(height: AppSpacing.m),
-                      const Text(
-                        'ANCS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         AppLocalizations.of(context)!.loginAgency,
                         style: TextStyle(
@@ -95,24 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.s,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context)!.loginTitle,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.75),
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -180,6 +188,27 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: AppSpacing.m),
+
+                        // Boutons de remplissage rapide pour les tests
+                        const Text(
+                          'Comptes de test (remplissage rapide) :',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _buildQuickChip('Admin', 'admin@ancs.gov.tn', 'Admin@ANCS2024!'),
+                            const SizedBox(width: 6),
+                            _buildQuickChip('Auditeur', 'auditeur.demo@ancs.gov.tn', 'Auditeur@ANCS2024!'),
+                            const SizedBox(width: 6),
+                            _buildQuickChip('RSSI', 'rssi.demo@bnt.com.tn', 'Rssi@ANCS2024!'),
+                          ],
+                        ),
                         const SizedBox(height: AppSpacing.l),
 
                         BlocBuilder<AuthBloc, AuthState>(
@@ -190,33 +219,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.l),
-
-                        // Note de sécurité
-                        Container(
-                          padding: const EdgeInsets.all(AppSpacing.m),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(AppSpacing.borderRadiusM),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.info_outline,
-                                size: 16,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: AppSpacing.s),
-                              Expanded(
-                                child: Text(
-                                  AppLocalizations.of(context)!.mfaNotice,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -228,4 +230,29 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
+  Widget _buildQuickChip(String label, String email, String password) {
+    return Expanded(
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          backgroundColor: AppColors.surface,
+        ),
+        onPressed: () => _fillAccount(email, password),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
 }
+

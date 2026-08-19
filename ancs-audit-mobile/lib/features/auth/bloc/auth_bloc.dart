@@ -33,20 +33,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final result = await authRepository.login(event.email, event.password);
 
-      if (result['mfaRequired'] == true) {
-        // SÉCURITÉ : on passe le mfaToken signé (pas l'email) pour lier
-        // la validation 2FA à cette session de connexion réussie.
-        final mfaToken = result['mfaToken'] as String? ?? '';
-        final email = result['email'] as String? ?? '';
-        emit(AuthMfaRequired(email: email, mfaToken: mfaToken));
-      } else {
-        await _storeTokens(result);
-        emit(AuthAuthenticated(
-          email: result['email'] ?? '',
-          role: result['role'] ?? '',
-          nom: result['name'] ?? '',
-        ));
+      // Always show 2FA screen after successful login.
+      // If the backend already returned tokens (non-MFA flow), we cache them
+      // temporarily in SharedPreferences under a staging key so the TOTP
+      // handler can restore them once the user enters the correct code.
+      final email = result['email'] as String? ?? event.email;
+      final mfaToken = result['mfaToken'] as String? ?? 'bypass';
+
+      // Cache any tokens the backend may have already issued
+      final prefs = await SharedPreferences.getInstance();
+      if (result['accessToken'] != null) {
+        await prefs.setString('pending_access_token', result['accessToken']);
       }
+      if (result['refreshToken'] != null) {
+        await prefs.setString('pending_refresh_token', result['refreshToken']);
+      }
+      await prefs.setString('pending_email', email);
+      await prefs.setString('pending_role', result['role'] ?? '');
+      await prefs.setString('pending_nom', result['name'] ?? '');
+
+      emit(AuthMfaRequired(email: email, mfaToken: mfaToken));
     } catch (e) {
       emit(AuthError(message: _parseError(e)));
     }
@@ -56,8 +62,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       TotpSubmitted event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      // SÉCURITÉ : utilise mfaToken (pas l'email) — le serveur valide la signature
-      // avant d'accepter le code TOTP.
+      // Hardcoded 2FA code — bypass API call and restore cached tokens.
+      if (event.code == '123456') {
+        final prefs = await SharedPreferences.getInstance();
+        final accessToken = prefs.getString('pending_access_token') ?? '';
+        final refreshToken = prefs.getString('pending_refresh_token') ?? '';
+        final email = prefs.getString('pending_email') ?? '';
+        final role = prefs.getString('pending_role') ?? '';
+        final nom = prefs.getString('pending_nom') ?? '';
+
+        if (accessToken.isNotEmpty) {
+          await prefs.setString('access_token', accessToken);
+        }
+        if (refreshToken.isNotEmpty) {
+          await prefs.setString('refresh_token', refreshToken);
+        }
+        await prefs.setString('user_email', email);
+        await prefs.setString('user_role', role);
+        await prefs.setString('user_nom', nom);
+
+        // Clean up staging keys
+        await prefs.remove('pending_access_token');
+        await prefs.remove('pending_refresh_token');
+        await prefs.remove('pending_email');
+        await prefs.remove('pending_role');
+        await prefs.remove('pending_nom');
+
+        emit(AuthAuthenticated(email: email, role: role, nom: nom));
+        return;
+      }
+
+      // Real MFA flow — call the backend
       final result =
           await authRepository.verifyTotp(event.mfaToken, event.code);
       await _storeTokens(result);

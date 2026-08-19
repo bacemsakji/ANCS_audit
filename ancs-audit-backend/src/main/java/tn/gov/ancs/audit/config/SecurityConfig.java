@@ -141,8 +141,15 @@ public class SecurityConfig {
         // Cela viole la spec CORS et expose l'API à des attaques CSRF depuis n'importe quel domaine.
         // On utilise la liste d'origines explicitement configurée dans application.yml.
         // Parse la chaîne séparée par des virgules en liste d'origines
-        List<String> originsList = Arrays.asList(allowedOrigins.split(","));
-        config.setAllowedOrigins(originsList);
+        List<String> originsList = Arrays.stream(allowedOrigins.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList();
+        if (originsList.contains("*")) {
+            config.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            config.setAllowedOrigins(originsList);
+        }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of(
             "Authorization", "Content-Type", "Accept", "X-Requested-With",

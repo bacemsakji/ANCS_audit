@@ -99,9 +99,6 @@ class _ActionsListScreenState extends State<ActionsListScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(title),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadActions),
-        ],
       ),
       body: _isLoading
           ? const Padding(

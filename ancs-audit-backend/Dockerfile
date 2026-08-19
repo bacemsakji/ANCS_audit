@@ -52,4 +52,4 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
                -Djava.security.egd=file:/dev/./urandom \
                -Dfile.encoding=UTF-8"
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-dev} -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-prod} -jar app.jar"]
